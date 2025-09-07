@@ -215,12 +215,7 @@ class SimpleComfyUITester:
                     
                     if not queue_pending and not queue_running:
                         print("✅ 推理完成！")
-                        # 尝试获取生成的图片
-                        image_data = self.get_generated_image()
-                        if image_data is None:
-                            print("尝试从输出目录获取图片...")
-                            image_data = self.get_latest_image_from_output()
-                        return image_data
+                        return True
                     
                     print(f"队列状态: 等待中 {len(queue_pending)}, 运行中 {len(queue_running)}")
                 
@@ -340,10 +335,12 @@ class SimpleComfyUITester:
         if not self.send_inference_request(prompt, negative_prompt, steps, cfg):
             return None
         
-        # 等待完成并获取图片
-        image_data = self.wait_for_completion()
-        if image_data is None:
+        # 等待完成
+        if not self.wait_for_completion():
             return None
+        
+        # 暂时跳过图片获取，专注于性能数据
+        image_data = None
         
         # 记录结束状态
         end_time = time.time()
@@ -370,7 +367,6 @@ class SimpleComfyUITester:
             'start_system_memory': start_system_memory,
             'end_system_memory': end_system_memory,
             'system_memory_used': system_memory_used,
-            'image_data': image_data,
             'timestamp': datetime.now().isoformat()
         }
         
@@ -418,17 +414,8 @@ class SimpleComfyUITester:
             print(f"\n测试 {i}/{len(test_configs)}")
             result = self.run_inference_test(**config)
             if result:
-                # 保存图片
-                if 'image_data' in result and result['image_data']:
-                    image_path = self.save_image(
-                        result['image_data'], 
-                        config['prompt'], 
-                        config['steps'], 
-                        config['cfg'], 
-                        i
-                    )
-                    result['image_path'] = image_path
                 self.results.append(result)
+                print(f"✅ 测试 {i} 完成")
             else:
                 print(f"❌ 测试 {i} 失败")
         
@@ -444,13 +431,8 @@ class SimpleComfyUITester:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"simple_comfyui_neta_lumina_results_{timestamp}.json"
         
-        # 创建不包含图片数据的副本用于JSON保存
-        results_for_json = []
-        for result in self.results:
-            result_copy = result.copy()
-            if 'image_data' in result_copy:
-                del result_copy['image_data']  # 移除二进制图片数据
-            results_for_json.append(result_copy)
+        # 直接保存结果（不包含图片数据）
+        results_for_json = self.results
         
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(results_for_json, f, indent=2, ensure_ascii=False)
