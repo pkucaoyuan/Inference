@@ -60,7 +60,16 @@ def check_models():
     for name, path in models.items():
         if not path.exists():
             missing_models.append(name)
-        elif name == "Neta Lumina" and not (path / "model_index.json").exists():
+        elif name == "Neta Lumina":
+            # Neta Lumina使用ComfyUI格式，检查关键文件
+            required_files = [
+                "lumina_workflow.json",
+                "README.md"
+            ]
+            has_required = any((path / file).exists() for file in required_files)
+            if not has_required:
+                missing_models.append(f"{name} (文件不完整)")
+        elif name in ["FLUX", "Lumina"] and not (path / "model_index.json").exists():
             missing_models.append(f"{name} (文件不完整)")
     
     if missing_models:

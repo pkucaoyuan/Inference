@@ -85,7 +85,14 @@ class InferenceBenchmark:
         
         # 检查Neta Lumina模型文件是否存在
         neta_dir = Path("./Neta-Lumina")
-        if not (neta_dir / "model_index.json").exists():
+        if not neta_dir.exists():
+            print("Neta Lumina模型目录不存在，跳过测试")
+            return None
+        
+        # Neta Lumina使用ComfyUI格式，检查关键文件
+        required_files = ["lumina_workflow.json", "README.md"]
+        has_required = any((neta_dir / file).exists() for file in required_files)
+        if not has_required:
             print("Neta Lumina模型文件不完整，跳过测试")
             print("请下载完整的Neta Lumina模型文件:")
             print("1. 下载 neta-lumina-v1.0-all-in-one.safetensors")
