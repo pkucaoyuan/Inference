@@ -330,6 +330,9 @@ organized_images/
 
 6. **Neta Lumina ComfyUI格式问题**
    ```bash
+   # 测试Neta Lumina模型（支持all-in-one格式）
+   python test_neta_lumina.py
+   
    # 分析Neta Lumina模型结构
    python neta_lumina_loader.py
    
@@ -338,6 +341,10 @@ organized_images/
    # 2. 将模型文件放入ComfyUI/models/
    # 3. 使用lumina_workflow.json工作流
    ```
+
+7. **GPU内存记录不准确**
+   - 已修复：使用nvidia-smi获取准确的GPU内存使用量
+   - 避免使用enable_model_cpu_offload()影响内存统计
 
 4. **CUDA内存不足**
    - 减少图像尺寸

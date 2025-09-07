@@ -91,15 +91,19 @@ class InferenceBenchmark:
             print("Neta Lumina模型目录不存在，跳过测试")
             return None
         
-        # Neta Lumina使用ComfyUI格式，检查关键文件
-        required_files = ["lumina_workflow.json", "README.md"]
-        has_required = any((neta_dir / file).exists() for file in required_files)
-        if not has_required:
+        # 检查Neta Lumina模型文件（支持新的all-in-one格式）
+        model_files = list(neta_dir.rglob("*.safetensors"))
+        workflow_file = neta_dir / "lumina_workflow.json"
+        readme_file = neta_dir / "README.md"
+        
+        if not model_files and not workflow_file.exists():
             print("Neta Lumina模型文件不完整，跳过测试")
             print("请下载完整的Neta Lumina模型文件:")
             print("1. 下载 neta-lumina-v1.0-all-in-one.safetensors")
             print("2. 或下载分离的组件文件到对应目录")
             return None
+        
+        print(f"找到 {len(model_files)} 个模型文件")
         
         # 尝试加载Neta Lumina
         print("尝试加载Neta Lumina模型...")
@@ -147,7 +151,7 @@ class InferenceBenchmark:
         
         # 记录开始状态
         start_time = time.time()
-        start_memory = self._get_gpu_memory()
+        start_memory = self._get_gpu_memory_nvidia_smi()
         
         try:
             # 执行推理 - 使用官方推荐参数
@@ -199,7 +203,7 @@ class InferenceBenchmark:
             
             # 记录结束状态
             end_time = time.time()
-            end_memory = self._get_gpu_memory()
+            end_memory = self._get_gpu_memory_nvidia_smi()
             
             return {
                 'prompt': prompt,
@@ -303,6 +307,19 @@ class InferenceBenchmark:
             # 获取缓存的内存
             cached = torch.cuda.memory_reserved() / (1024**3)  # GB
             return allocated + cached
+        return 0.0
+    
+    def _get_gpu_memory_nvidia_smi(self) -> float:
+        """使用nvidia-smi获取GPU内存使用量"""
+        try:
+            import subprocess
+            result = subprocess.run(['nvidia-smi', '--query-gpu=memory.used', '--format=csv,noheader,nounits'], 
+                                  capture_output=True, text=True)
+            if result.returncode == 0:
+                memory_mb = float(result.stdout.strip())
+                return memory_mb / 1024.0  # 转换为GB
+        except Exception:
+            pass
         return 0.0
     
     def run_all_benchmarks(self):
