@@ -254,26 +254,13 @@ class ComfyUITester:
         # 修改采样器节点
         for node in sampler_nodes:
             if "widgets_values" in node and len(node["widgets_values"]) >= 7:
-                # widgets_values通常包含: [model, positive, negative, latent_image, seed, steps, cfg, sampler_name, scheduler, denoise]
-                node["widgets_values"][5] = steps  # steps
-                node["widgets_values"][6] = cfg    # cfg
-                node["widgets_values"][4] = int(time.time()) % 1000000  # seed
+                # 根据工作流文件，widgets_values包含: [seed, randomize, steps, cfg, sampler_name, scheduler, denoise]
+                node["widgets_values"][0] = int(time.time()) % 1000000  # seed
+                node["widgets_values"][2] = steps  # steps
+                node["widgets_values"][3] = cfg    # cfg
         
-        # 转换为ComfyUI期望的字典格式，过滤掉Note节点
-        workflow_dict = {}
-        for node in workflow["nodes"]:
-            # 跳过Note节点（注释节点）
-            if node.get("type") == "Note":
-                continue
-                
-            node_id = node["id"]
-            workflow_dict[str(node_id)] = {
-                "class_type": node["type"],
-                "inputs": node.get("inputs", {}),
-                "widgets_values": node.get("widgets_values", [])
-            }
-        
-        return workflow_dict
+        # 直接返回修改后的工作流，ComfyUI API会自动处理格式转换
+        return workflow
     
     def send_inference_request(self, prompt, negative_prompt="", steps=30, cfg=4.0):
         """发送推理请求"""
