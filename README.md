@@ -334,7 +334,7 @@ organized_images/
 5. **Neta Lumina模型文件缺失**
    ```bash
    # 下载Neta Lumina模型
-   python download_neta_lumina.py
+   python download_models.py --model neta-lumina
    ```
 
 4. **CUDA内存不足**
