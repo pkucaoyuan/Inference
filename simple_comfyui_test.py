@@ -66,13 +66,17 @@ class SimpleComfyUITester:
         workflow = {
             "1": {
                 "class_type": "UNETLoader",
-                "inputs": {},
-                "widgets_values": ["neta-lumina-v1.0.safetensors", "default"]
+                "inputs": {
+                    "unet_name": "neta-lumina-v1.0.safetensors",
+                    "weight_dtype": "default"
+                }
             },
             "2": {
                 "class_type": "ModelSamplingAuraFlow", 
-                "inputs": {"model": ["1", 0]},
-                "widgets_values": [6]
+                "inputs": {
+                    "model": ["1", 0],
+                    "shift": 6
+                }
             },
             "3": {
                 "class_type": "KSampler",
@@ -80,47 +84,60 @@ class SimpleComfyUITester:
                     "model": ["2", 0],
                     "positive": ["6", 0],
                     "negative": ["7", 0],
-                    "latent_image": ["9", 0]
-                },
-                "widgets_values": [int(time.time()) % 1000000, "randomize", steps, cfg, "res_multistep", "linear_quadratic", 1]
+                    "latent_image": ["9", 0],
+                    "seed": int(time.time()) % 1000000,
+                    "steps": steps,
+                    "cfg": cfg,
+                    "sampler_name": "res_multistep",
+                    "scheduler": "linear_quadratic",
+                    "denoise": 1
+                }
             },
             "4": {
                 "class_type": "VAEDecode",
                 "inputs": {
                     "samples": ["3", 0],
                     "vae": ["5", 0]
-                },
-                "widgets_values": []
+                }
             },
             "5": {
                 "class_type": "VAELoader",
-                "inputs": {},
-                "widgets_values": ["ae.safetensors"]
+                "inputs": {
+                    "vae_name": "ae.safetensors"
+                }
             },
             "6": {
                 "class_type": "CLIPTextEncode",
-                "inputs": {"clip": ["8", 0]},
-                "widgets_values": [prompt]
+                "inputs": {
+                    "clip": ["8", 0],
+                    "text": prompt
+                }
             },
             "7": {
                 "class_type": "CLIPTextEncode", 
-                "inputs": {"clip": ["8", 0]},
-                "widgets_values": [negative_prompt]
+                "inputs": {
+                    "clip": ["8", 0],
+                    "text": negative_prompt
+                }
             },
             "8": {
                 "class_type": "CLIPLoader",
-                "inputs": {},
-                "widgets_values": ["gemma_2_2b_fp16.safetensors", "lumina2", "default"]
+                "inputs": {
+                    "type": "lumina2",
+                    "clip_name": "gemma_2_2b_fp16.safetensors"
+                }
             },
             "9": {
                 "class_type": "EmptySD3LatentImage",
-                "inputs": {},
-                "widgets_values": [1024, 1024, 1]
+                "inputs": {
+                    "width": 1024,
+                    "height": 1024,
+                    "batch_size": 1
+                }
             },
             "11": {
                 "class_type": "PreviewImage",
-                "inputs": {"images": ["4", 0]},
-                "widgets_values": []
+                "inputs": {"images": ["4", 0]}
             }
         }
         
