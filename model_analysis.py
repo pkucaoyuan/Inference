@@ -286,14 +286,14 @@ class ModelAnalyzer:
                 device_map="cuda"
             )
             
-            # 执行推理
+            # 执行推理 - 使用FLUX官方推荐参数
             start_time = time.time()
             image = pipe(
                 prompt,
                 height=image_size[0],
                 width=image_size[1],
                 num_inference_steps=num_steps,
-                guidance_scale=7.5
+                guidance_scale=3.5  # FLUX官方推荐值
             ).images[0]
             end_time = time.time()
             
@@ -316,14 +316,16 @@ class ModelAnalyzer:
             )
             pipe.enable_model_cpu_offload()
             
-            # 执行推理
+            # 执行推理 - 使用Lumina官方推荐参数
             start_time = time.time()
             image = pipe(
                 prompt,
                 height=image_size[0],
                 width=image_size[1],
                 num_inference_steps=num_steps,
-                guidance_scale=4.0
+                guidance_scale=4.0,
+                cfg_trunc_ratio=0.25,
+                cfg_normalization=True
             ).images[0]
             end_time = time.time()
             
@@ -346,14 +348,14 @@ class ModelAnalyzer:
             )
             pipe.enable_model_cpu_offload()
             
-            # 执行推理
+            # 执行推理 - 使用Neta Lumina官方推荐参数
             start_time = time.time()
             image = pipe(
                 prompt,
                 height=image_size[0],
                 width=image_size[1],
                 num_inference_steps=num_steps,
-                guidance_scale=4.0
+                guidance_scale=4.5  # Neta Lumina推荐范围4-5.5的中间值
             ).images[0]
             end_time = time.time()
             

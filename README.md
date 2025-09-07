@@ -83,6 +83,27 @@ python real_inference_test.py
 
 **注意**: 所有推理测试都会实际加载模型并进行推理，需要更多时间和GPU内存。如果模型加载失败，会显示具体的错误信息。
 
+## 官方推荐推理参数
+
+### FLUX.1-dev
+- **Guidance Scale**: 3.5 (推荐值)
+- **采样步数**: 20-50步
+- **图像尺寸**: 支持多种尺寸，推荐1024×1024
+- **采样器**: euler (推荐)
+
+### Lumina-Image-2.0
+- **Guidance Scale**: 4.0
+- **采样步数**: 50步 (官方示例)
+- **图像尺寸**: 1024×1024
+- **特殊参数**: cfg_trunc_ratio=0.25, cfg_normalization=True
+
+### Neta-Lumina
+- **Guidance Scale**: 4-5.5 (使用4.5)
+- **采样步数**: 30步 (推荐)
+- **图像尺寸**: 1024×1024, 768×1532, 968×1322
+- **采样器**: res_multistep/euler_ancestral
+- **调度器**: linear_quadratic
+
 ## 模型下载
 
 ### 方法1: 自动下载脚本（推荐）

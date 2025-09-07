@@ -51,7 +51,8 @@ class InferenceBenchmark:
             (1536, 1536)
         ]
         
-        self.test_steps = [10, 20, 30, 50]
+        # 根据官方推荐设置测试步数
+        self.test_steps = [20, 30, 50]  # FLUX推荐20-50步，Lumina推荐50步，Neta Lumina推荐30步
     
     def benchmark_flux(self) -> Dict:
         """基准测试FLUX模型"""
@@ -123,22 +124,35 @@ class InferenceBenchmark:
         start_memory = self._get_gpu_memory()
         
         try:
-            # 执行推理
+            # 执行推理 - 使用官方推荐参数
             if model_name == "FLUX":
+                # FLUX官方推荐: guidance_scale=3.5
                 image = pipe(
                     prompt,
                     height=size[0],
                     width=size[1],
                     num_inference_steps=steps,
-                    guidance_scale=7.5
+                    guidance_scale=3.5
                 ).images[0]
-            elif model_name in ["Lumina", "Neta Lumina"]:
+            elif model_name == "Lumina":
+                # Lumina官方推荐: guidance_scale=4.0, 默认50步
                 image = pipe(
                     prompt,
                     height=size[0],
                     width=size[1],
                     num_inference_steps=steps,
-                    guidance_scale=4.0
+                    guidance_scale=4.0,
+                    cfg_trunc_ratio=0.25,
+                    cfg_normalization=True
+                ).images[0]
+            elif model_name == "Neta Lumina":
+                # Neta Lumina推荐: guidance_scale=4-5.5, 默认30步
+                image = pipe(
+                    prompt,
+                    height=size[0],
+                    width=size[1],
+                    num_inference_steps=steps,
+                    guidance_scale=4.5  # 使用推荐范围中间值
                 ).images[0]
             
             # 记录结束状态
