@@ -259,8 +259,52 @@ class ComfyUITester:
                 node["widgets_values"][2] = steps  # steps
                 node["widgets_values"][3] = cfg    # cfg
         
-        # 直接返回修改后的工作流，ComfyUI API会自动处理格式转换
-        return workflow
+        # 转换为ComfyUI期望的字典格式
+        workflow_dict = {}
+        
+        # 首先创建所有节点
+        for node in workflow["nodes"]:
+            # 跳过Note节点（注释节点）
+            if node.get("type") == "Note":
+                continue
+                
+            node_id = str(node["id"])
+            workflow_dict[node_id] = {
+                "class_type": node["type"],
+                "inputs": {},
+                "widgets_values": node.get("widgets_values", [])
+            }
+        
+        # 然后处理连接关系
+        for link in workflow.get("links", []):
+            # link格式: [link_id, source_node_id, source_slot, target_node_id, target_slot, type]
+            if len(link) >= 6:
+                source_node_id = str(link[1])
+                target_node_id = str(link[3])
+                target_slot = link[4]
+                
+                # 如果目标节点存在，添加输入连接
+                if target_node_id in workflow_dict:
+                    # 根据连接类型确定输入名称
+                    link_type = link[5]
+                    if link_type == "MODEL":
+                        input_name = "model"
+                    elif link_type == "CLIP":
+                        input_name = "clip"
+                    elif link_type == "VAE":
+                        input_name = "vae"
+                    elif link_type == "LATENT":
+                        input_name = "latent_image" if target_slot == 3 else "latent"
+                    elif link_type == "CONDITIONING":
+                        input_name = "positive" if target_slot == 1 else "negative"
+                    elif link_type == "IMAGE":
+                        input_name = "images"
+                    else:
+                        input_name = f"input_{target_slot}"
+                    
+                    workflow_dict[target_node_id]["inputs"][input_name] = [source_node_id, 0]
+        
+        return workflow_dict
     
     def send_inference_request(self, prompt, negative_prompt="", steps=30, cfg=4.0):
         """发送推理请求"""
