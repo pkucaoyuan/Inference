@@ -27,17 +27,23 @@ class SimpleComfyUITester:
     def get_gpu_memory(self):
         """获取GPU内存使用量"""
         try:
+            # 获取GPU内存使用情况
             result = subprocess.run([
-                'nvidia-smi', 
-                '--query-gpu=memory.used', 
+                'nvidia-smi',
+                '--query-gpu=memory.used,memory.total',
                 '--format=csv,noheader,nounits'
             ], capture_output=True, text=True)
-            
+
             if result.returncode == 0:
+                # 处理多GPU情况，取第一个GPU的内存使用量
                 lines = result.stdout.strip().split('\n')
                 if lines and lines[0]:
-                    memory_mb = float(lines[0])
-                    return memory_mb / 1024.0  # 转换为GB
+                    # 格式: "used,total"
+                    used_mb, total_mb = lines[0].split(',')
+                    used_gb = float(used_mb) / 1024.0
+                    total_gb = float(total_mb) / 1024.0
+                    print(f"GPU内存: {used_gb:.2f}GB / {total_gb:.2f}GB")
+                    return used_gb
         except Exception as e:
             print(f"获取GPU内存失败: {e}")
         
@@ -88,8 +94,8 @@ class SimpleComfyUITester:
                     "seed": int(time.time()) % 1000000,
                     "steps": steps,
                     "cfg": cfg,
-                    "sampler_name": "res_multistep",
-                    "scheduler": "linear_quadratic",
+                    "sampler_name": "euler",
+                    "scheduler": "normal",
                     "denoise": 1
                 }
             },
@@ -203,6 +209,7 @@ class SimpleComfyUITester:
         
         # 记录开始状态
         start_time = time.time()
+        print("正在获取开始状态...")
         start_gpu_memory = self.get_gpu_memory()
         start_system_memory = self.get_system_memory()
         
@@ -218,6 +225,7 @@ class SimpleComfyUITester:
         
         # 记录结束状态
         end_time = time.time()
+        print("正在获取结束状态...")
         end_gpu_memory = self.get_gpu_memory()
         end_system_memory = self.get_system_memory()
         
@@ -225,6 +233,8 @@ class SimpleComfyUITester:
         inference_time = end_time - start_time
         gpu_memory_used = end_gpu_memory - start_gpu_memory
         system_memory_used = end_system_memory - start_system_memory
+        
+        print(f"结束状态 - GPU内存: {end_gpu_memory:.2f}GB, 系统内存: {end_system_memory:.2f}GB")
         
         result = {
             'prompt': prompt,
@@ -253,13 +263,13 @@ class SimpleComfyUITester:
             {
                 "prompt": "A beautiful anime character in a magical garden, detailed, high quality",
                 "negative_prompt": "",
-                "steps": 30,
+                "steps": 20,
                 "cfg": 4.0
             },
             {
                 "prompt": "A futuristic city with flying cars, cyberpunk style, anime",
                 "negative_prompt": "blurry, low quality",
-                "steps": 30,
+                "steps": 20,
                 "cfg": 4.5
             },
             {
