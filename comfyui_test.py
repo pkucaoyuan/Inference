@@ -282,27 +282,24 @@ class ComfyUITester:
                 source_node_id = str(link[1])
                 target_node_id = str(link[3])
                 target_slot = link[4]
+                link_id = link[0]
                 
                 # 如果目标节点存在，添加输入连接
                 if target_node_id in workflow_dict:
-                    # 根据连接类型确定输入名称
-                    link_type = link[5]
-                    if link_type == "MODEL":
-                        input_name = "model"
-                    elif link_type == "CLIP":
-                        input_name = "clip"
-                    elif link_type == "VAE":
-                        input_name = "vae"
-                    elif link_type == "LATENT":
-                        input_name = "latent_image" if target_slot == 3 else "latent"
-                    elif link_type == "CONDITIONING":
-                        input_name = "positive" if target_slot == 1 else "negative"
-                    elif link_type == "IMAGE":
-                        input_name = "images"
-                    else:
-                        input_name = f"input_{target_slot}"
+                    # 查找目标节点的inputs定义来确定输入名称
+                    target_node = None
+                    for node in workflow["nodes"]:
+                        if node["id"] == int(target_node_id):
+                            target_node = node
+                            break
                     
-                    workflow_dict[target_node_id]["inputs"][input_name] = [source_node_id, 0]
+                    if target_node:
+                        # 根据inputs定义找到对应的输入名称
+                        for input_def in target_node.get("inputs", []):
+                            if input_def.get("link") == link_id:
+                                input_name = input_def["name"]
+                                workflow_dict[target_node_id]["inputs"][input_name] = [source_node_id, 0]
+                                break
         
         return workflow_dict
     
