@@ -207,21 +207,21 @@ class ModelAnalyzer:
         
         if model_name == 'flux':
             optimizations.extend([
-                'FLUX架构优化',
-                '高效的注意力机制',
-                '优化的VAE设计'
+                'FLUX Architecture Optimization',
+                'Efficient Attention Mechanism',
+                'Optimized VAE Design'
             ])
         elif model_name == 'lumina':
             optimizations.extend([
-                'Flow-based扩散',
-                'DiT架构',
-                'Gemma文本编码器'
+                'Flow-based Diffusion',
+                'DiT Architecture',
+                'Gemma Text Encoder'
             ])
         elif model_name == 'neta_lumina':
             optimizations.extend([
-                '基于Lumina的优化',
-                '动漫风格特化',
-                '可能的推理优化'
+                'Lumina-based Optimization',
+                'Anime Style Specialization',
+                'Possible Inference Optimization'
             ])
         
         return optimizations
@@ -405,31 +405,31 @@ class ModelAnalyzer:
         # 推理时间对比图
         fig, axes = plt.subplots(2, 2, figsize=(15, 12))
         
-        # 1. 推理时间对比
+        # 1. Inference Time Comparison
         models = [r.model_name for r in self.results]
         times = [r.inference_time for r in self.results]
         
         axes[0, 0].bar(models, times)
-        axes[0, 0].set_title('推理时间对比')
-        axes[0, 0].set_ylabel('时间 (秒)')
+        axes[0, 0].set_title('Inference Time Comparison')
+        axes[0, 0].set_ylabel('Time (seconds)')
         
-        # 2. 参数量对比
+        # 2. Parameter Count Comparison
         params = [r.parameters_count/1e9 for r in self.results]
         axes[0, 1].bar(models, params)
-        axes[0, 1].set_title('参数量对比')
-        axes[0, 1].set_ylabel('参数量 (B)')
+        axes[0, 1].set_title('Parameter Count Comparison')
+        axes[0, 1].set_ylabel('Parameters (B)')
         
-        # 3. GPU内存使用对比
+        # 3. GPU Memory Usage Comparison
         gpu_mem = [r.gpu_memory_used for r in self.results]
         axes[1, 0].bar(models, gpu_mem)
-        axes[1, 0].set_title('GPU内存使用对比')
-        axes[1, 0].set_ylabel('内存 (GB)')
+        axes[1, 0].set_title('GPU Memory Usage Comparison')
+        axes[1, 0].set_ylabel('Memory (GB)')
         
-        # 4. 效率对比（参数量/推理时间）
+        # 4. Efficiency Comparison (Parameters/Inference Time)
         efficiency = [p/t if t > 0 else 0 for p, t in zip(params, times)]
         axes[1, 1].bar(models, efficiency)
-        axes[1, 1].set_title('推理效率对比')
-        axes[1, 1].set_ylabel('效率 (B参数/秒)')
+        axes[1, 1].set_title('Inference Efficiency Comparison')
+        axes[1, 1].set_ylabel('Efficiency (B params/sec)')
         
         plt.tight_layout()
         plt.savefig(report_dir / "model_comparison.png", dpi=300, bbox_inches='tight')

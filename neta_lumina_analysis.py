@@ -38,39 +38,39 @@ class NetaLuminaAnalyzer:
         """分析Neta Lumina的优化特性"""
         print("分析Neta Lumina优化特性...")
         
-        # 基于文档和代码分析优化特性
+        # Based on documentation and code analysis of optimization features
         self.optimization_features = [
             {
-                'name': '动漫风格特化',
-                'description': '针对动漫风格图像进行专门优化，减少通用性计算开销',
+                'name': 'Anime Style Specialization',
+                'description': 'Specialized optimization for anime-style images, reducing general-purpose computation overhead',
                 'impact': 'medium',
                 'estimated_speedup': 1.1,
                 'memory_reduction': 0.05
             },
             {
-                'name': 'Gemma-2B文本编码器优化',
-                'description': '使用更高效的Gemma-2B文本编码器，相比T5-XXL更轻量',
+                'name': 'Gemma-2B Text Encoder Optimization',
+                'description': 'Using more efficient Gemma-2B text encoder, lighter than T5-XXL',
                 'impact': 'high',
                 'estimated_speedup': 1.3,
                 'memory_reduction': 0.15
             },
             {
-                'name': '推理流程优化',
-                'description': '优化推理流程，减少不必要的计算步骤',
+                'name': 'Inference Pipeline Optimization',
+                'description': 'Optimized inference pipeline, reducing unnecessary computation steps',
                 'impact': 'medium',
                 'estimated_speedup': 1.15,
                 'memory_reduction': 0.08
             },
             {
-                'name': '模型量化优化',
-                'description': '可能的模型量化或精度优化',
+                'name': 'Model Quantization Optimization',
+                'description': 'Possible model quantization or precision optimization',
                 'impact': 'low',
                 'estimated_speedup': 1.05,
                 'memory_reduction': 0.1
             },
             {
-                'name': '注意力机制优化',
-                'description': '针对动漫图像特点优化注意力机制',
+                'name': 'Attention Mechanism Optimization',
+                'description': 'Attention mechanism optimization for anime image characteristics',
                 'impact': 'medium',
                 'estimated_speedup': 1.12,
                 'memory_reduction': 0.06
@@ -290,24 +290,24 @@ class NetaLuminaAnalyzer:
         # 创建图表
         fig, axes = plt.subplots(2, 2, figsize=(15, 12))
         
-        # 1. 优化特性影响程度
+        # 1. Optimization Feature Impact
         features = [f['name'] for f in self.optimization_features]
         impacts = [f['estimated_speedup'] for f in self.optimization_features]
         
         axes[0, 0].barh(features, impacts, color='skyblue')
-        axes[0, 0].set_title('各优化特性的加速效果')
-        axes[0, 0].set_xlabel('加速比')
+        axes[0, 0].set_title('Optimization Feature Speedup Effects')
+        axes[0, 0].set_xlabel('Speedup Ratio')
         
-        # 2. 内存优化对比
+        # 2. Memory Optimization Comparison
         memory_features = [opt['feature'] for opt in analyses['memory']['memory_optimizations']]
         memory_reductions = [opt['reduction'] for opt in analyses['memory']['memory_optimizations']]
         
         axes[0, 1].bar(memory_features, memory_reductions, color='lightcoral')
-        axes[0, 1].set_title('内存优化效果')
-        axes[0, 1].set_ylabel('内存减少比例')
+        axes[0, 1].set_title('Memory Optimization Effects')
+        axes[0, 1].set_ylabel('Memory Reduction Ratio')
         axes[0, 1].tick_params(axis='x', rotation=45)
         
-        # 3. 参数对比
+        # 3. Parameter Comparison
         if analyses['parameters']:
             models = ['Lumina', 'Neta Lumina']
             params = [
@@ -316,11 +316,11 @@ class NetaLuminaAnalyzer:
             ]
             
             axes[1, 0].bar(models, params, color=['lightblue', 'lightgreen'])
-            axes[1, 0].set_title('模型参数量对比')
-            axes[1, 0].set_ylabel('参数量 (B)')
+            axes[1, 0].set_title('Model Parameter Count Comparison')
+            axes[1, 0].set_ylabel('Parameters (B)')
         
-        # 4. 综合优化效果
-        categories = ['参数优化', '注意力优化', '内存优化', '推理加速']
+        # 4. Overall Optimization Effects
+        categories = ['Parameter Opt', 'Attention Opt', 'Memory Opt', 'Inference Speedup']
         values = [
             analyses['parameters'].get('reduction_percentage', 0),
             analyses['attention'].get('optimization_percentage', 0),
@@ -329,8 +329,8 @@ class NetaLuminaAnalyzer:
         ]
         
         axes[1, 1].bar(categories, values, color=['gold', 'lightgreen', 'lightcoral', 'skyblue'])
-        axes[1, 1].set_title('综合优化效果对比')
-        axes[1, 1].set_ylabel('优化百分比 (%)')
+        axes[1, 1].set_title('Overall Optimization Effects Comparison')
+        axes[1, 1].set_ylabel('Optimization Percentage (%)')
         axes[1, 1].tick_params(axis='x', rotation=45)
         
         plt.tight_layout()

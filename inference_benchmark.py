@@ -360,24 +360,24 @@ class InferenceBenchmark:
         # 创建图表
         fig, axes = plt.subplots(2, 2, figsize=(15, 12))
         
-        # 1. 平均推理时间对比
+        # 1. Average Inference Time Comparison
         models = [r['model'] for r in self.results]
         avg_times = [r['avg_time'] for r in self.results]
         
         axes[0, 0].bar(models, avg_times, color=['#FF6B6B', '#4ECDC4', '#45B7D1'])
-        axes[0, 0].set_title('平均推理时间对比')
-        axes[0, 0].set_ylabel('时间 (秒)')
+        axes[0, 0].set_title('Average Inference Time Comparison')
+        axes[0, 0].set_ylabel('Time (seconds)')
         axes[0, 0].tick_params(axis='x', rotation=45)
         
-        # 2. 平均GPU内存使用对比
+        # 2. Average GPU Memory Usage Comparison
         avg_memory = [r['avg_memory'] for r in self.results]
         
         axes[0, 1].bar(models, avg_memory, color=['#FF6B6B', '#4ECDC4', '#45B7D1'])
-        axes[0, 1].set_title('平均GPU内存使用对比')
-        axes[0, 1].set_ylabel('内存 (GB)')
+        axes[0, 1].set_title('Average GPU Memory Usage Comparison')
+        axes[0, 1].set_ylabel('Memory (GB)')
         axes[0, 1].tick_params(axis='x', rotation=45)
         
-        # 3. 推理时间分布
+        # 3. Inference Time Distribution
         all_times = []
         all_models = []
         for result in self.results:
@@ -385,7 +385,7 @@ class InferenceBenchmark:
                 all_times.append(r['inference_time'])
                 all_models.append(result['model'])
         
-        # 创建箱线图
+        # Create box plot
         model_times = {}
         for model, time in zip(all_models, all_times):
             if model not in model_times:
@@ -393,16 +393,16 @@ class InferenceBenchmark:
             model_times[model].append(time)
         
         axes[1, 0].boxplot([model_times[model] for model in models], labels=models)
-        axes[1, 0].set_title('推理时间分布')
-        axes[1, 0].set_ylabel('时间 (秒)')
+        axes[1, 0].set_title('Inference Time Distribution')
+        axes[1, 0].set_ylabel('Time (seconds)')
         axes[1, 0].tick_params(axis='x', rotation=45)
         
-        # 4. 效率对比（时间/内存）
+        # 4. Efficiency Comparison (Time/Memory)
         efficiency = [t/m if m > 0 else 0 for t, m in zip(avg_times, avg_memory)]
         
         axes[1, 1].bar(models, efficiency, color=['#FF6B6B', '#4ECDC4', '#45B7D1'])
-        axes[1, 1].set_title('推理效率对比 (时间/内存)')
-        axes[1, 1].set_ylabel('效率指标')
+        axes[1, 1].set_title('Inference Efficiency Comparison (Time/Memory)')
+        axes[1, 1].set_ylabel('Efficiency Metric')
         axes[1, 1].tick_params(axis='x', rotation=45)
         
         plt.tight_layout()
