@@ -54,8 +54,8 @@ class InferenceBenchmark:
         
         # 根据官方推荐设置测试步数
         self.model_recommended_steps = {
-            "FLUX": [20, 30, 50],      # FLUX推荐20-50步
-            "Lumina": [50],             # Lumina推荐50步
+            "FLUX": [50],               # FLUX官方示例使用50步
+            "Lumina": [30],             # Lumina默认30步
             "Neta Lumina": [30]         # Neta Lumina推荐30步
         }
     
@@ -120,33 +120,39 @@ class InferenceBenchmark:
         try:
             # 执行推理 - 使用官方推荐参数
             if model_name == "FLUX":
-                # FLUX官方推荐: guidance_scale=3.5
+                # FLUX官方示例参数
                 image = pipe(
                     prompt,
                     height=size[0],
                     width=size[1],
+                    guidance_scale=3.5,
                     num_inference_steps=steps,
-                    guidance_scale=3.5
+                    max_sequence_length=512,
+                    generator=torch.Generator("cpu").manual_seed(0)
                 ).images[0]
             elif model_name == "Lumina":
-                # Lumina官方推荐: guidance_scale=4.0, 默认50步
+                # Lumina官方默认参数
                 image = pipe(
                     prompt,
                     height=size[0],
                     width=size[1],
                     num_inference_steps=steps,
                     guidance_scale=4.0,
-                    cfg_trunc_ratio=0.25,
-                    cfg_normalization=True
+                    cfg_trunc_ratio=1.0,  # 官方默认值
+                    cfg_normalization=True,
+                    max_sequence_length=256
                 ).images[0]
             elif model_name == "Neta Lumina":
-                # Neta Lumina推荐: guidance_scale=4-5.5, 默认30步
+                # Neta Lumina官方推荐参数
                 image = pipe(
                     prompt,
                     height=size[0],
                     width=size[1],
                     num_inference_steps=steps,
-                    guidance_scale=4.5  # 使用推荐范围中间值
+                    guidance_scale=4.0,  # 使用推荐范围下限
+                    cfg_trunc_ratio=1.0,
+                    cfg_normalization=True,
+                    max_sequence_length=256
                 ).images[0]
             
             # 保存生成的图片

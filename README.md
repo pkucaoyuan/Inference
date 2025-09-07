@@ -83,23 +83,22 @@ python image_organizer.py
 ## 官方推荐推理参数
 
 ### FLUX.1-dev
-- **Guidance Scale**: 3.5 (推荐值)
-- **采样步数**: 20, 30, 50步 (测试所有推荐步数)
+- **Guidance Scale**: 3.5 (官方示例)
+- **采样步数**: 50步 (官方示例)
 - **图像尺寸**: 1024×1024 (统一测试尺寸)
-- **采样器**: euler (推荐)
+- **特殊参数**: max_sequence_length=512, generator=torch.Generator("cpu").manual_seed(0)
 
 ### Lumina-Image-2.0
-- **Guidance Scale**: 4.0
-- **采样步数**: 50步 (官方推荐)
+- **Guidance Scale**: 4.0 (官方默认)
+- **采样步数**: 30步 (官方默认)
 - **图像尺寸**: 1024×1024 (统一测试尺寸)
-- **特殊参数**: cfg_trunc_ratio=0.25, cfg_normalization=True
+- **特殊参数**: cfg_trunc_ratio=1.0, cfg_normalization=True, max_sequence_length=256
 
 ### Neta-Lumina
-- **Guidance Scale**: 4-5.5 (使用4.5)
+- **Guidance Scale**: 4.0 (推荐范围4-5.5的下限)
 - **采样步数**: 30步 (官方推荐)
 - **图像尺寸**: 1024×1024 (统一测试尺寸)
-- **采样器**: res_multistep/euler_ancestral
-- **调度器**: linear_quadratic
+- **特殊参数**: cfg_trunc_ratio=1.0, cfg_normalization=True, max_sequence_length=256
 
 ## 模型下载
 
