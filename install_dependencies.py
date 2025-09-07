@@ -37,7 +37,8 @@ def main():
         "diffusers",
         "accelerate",
         "safetensors",
-        "huggingface_hub"
+        "huggingface_hub",
+        "sentencepiece",  # FLUX模型tokenizer需要
     ]
     
     # 可选依赖

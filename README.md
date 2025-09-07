@@ -326,9 +326,13 @@ organized_images/
    - 确认有足够的GPU内存
    - 查看具体错误信息进行排查
 
-4. **FLUX模型protobuf错误**
+4. **FLUX模型依赖错误**
    ```bash
-   pip install protobuf
+   # 自动修复FLUX依赖
+   python fix_flux_dependencies.py
+   
+   # 或手动安装
+   pip install protobuf sentencepiece
    ```
 
 5. **Neta Lumina模型文件缺失**
