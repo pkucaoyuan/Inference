@@ -16,18 +16,27 @@ from image_organizer import ImageOrganizer
 
 def check_dependencies():
     """检查依赖库"""
-    required_packages = [
-        "torch", "numpy", "matplotlib", "seaborn", "psutil", 
-        "transformers", "diffusers", "safetensors", "huggingface_hub",
-        "sentencepiece", "protobuf"
-    ]
+    # 定义包名和导入名的映射
+    packages = {
+        "torch": "torch",
+        "numpy": "numpy", 
+        "matplotlib": "matplotlib",
+        "seaborn": "seaborn",
+        "psutil": "psutil",
+        "transformers": "transformers",
+        "diffusers": "diffusers",
+        "safetensors": "safetensors",
+        "huggingface_hub": "huggingface_hub",
+        "sentencepiece": "sentencepiece",
+        "protobuf": "google.protobuf"  # protobuf的正确导入名
+    }
     
     missing_packages = []
-    for package in required_packages:
+    for package_name, import_name in packages.items():
         try:
-            __import__(package)
+            __import__(import_name)
         except ImportError:
-            missing_packages.append(package)
+            missing_packages.append(package_name)
     
     if missing_packages:
         print("缺少以下依赖库:")
