@@ -290,7 +290,7 @@ class ImageOrganizer:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>模型推理结果画廊</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+        body {{ font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }}
         .header { text-align: center; margin-bottom: 30px; }
         .model-section { margin-bottom: 40px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .model-title { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }

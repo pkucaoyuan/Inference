@@ -99,37 +99,10 @@ class InferenceBenchmark:
             print("2. 或下载分离的组件文件到对应目录")
             return None
         
-        # 尝试使用Lumina2Pipeline加载Neta Lumina模型
-        try:
-            from diffusers import Lumina2Pipeline
-            
-            print("正在加载Neta Lumina模型...")
-            # 尝试从Neta-Lumina目录加载
-            pipe = Lumina2Pipeline.from_pretrained(
-                "./Neta-Lumina",
-                torch_dtype=torch.bfloat16
-            )
-            pipe.enable_model_cpu_offload()
-            
-            results = []
-            for prompt in self.test_prompts:
-                for size in self.test_sizes:
-                    for steps in self.test_steps:
-                        result = self._benchmark_single_inference(
-                            pipe, prompt, size, steps, "Neta Lumina"
-                        )
-                        results.append(result)
-            
-            return {
-                'model': 'Neta Lumina (真实测试)',
-                'results': results,
-                'avg_time': np.mean([r['inference_time'] for r in results]),
-                'avg_memory': np.mean([r['gpu_memory'] for r in results])
-            }
-            
-        except Exception as e:
-            print(f"Neta Lumina真实测试失败: {e}")
-            return None
+        # Neta Lumina使用ComfyUI格式，无法直接用diffusers加载
+        print("Neta Lumina使用ComfyUI格式，跳过diffusers测试")
+        print("如需测试Neta Lumina，请使用ComfyUI或专门的加载器")
+        return None
     
     def _benchmark_single_inference(self, pipe, prompt: str, size: Tuple[int, int], 
                                   steps: int, model_name: str) -> Dict:
@@ -232,7 +205,7 @@ class InferenceBenchmark:
                         results.append(result)
             
             return {
-                'model': 'FLUX (真实测试)',
+                'model': 'FLUX (Real Test)',
                 'results': results,
                 'avg_time': np.mean([r['inference_time'] for r in results]),
                 'avg_memory': np.mean([r['gpu_memory'] for r in results])
@@ -267,7 +240,7 @@ class InferenceBenchmark:
                         results.append(result)
             
             return {
-                'model': 'Lumina (真实测试)',
+                'model': 'Lumina (Real Test)',
                 'results': results,
                 'avg_time': np.mean([r['inference_time'] for r in results]),
                 'avg_memory': np.mean([r['gpu_memory'] for r in results])
