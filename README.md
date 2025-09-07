@@ -53,43 +53,30 @@ python run_analysis.py
 2. 运行所有分析
 3. 生成总结报告
 
-### 方法2: 分别运行各个分析
-
-#### 1. 模型配置分析
+### 方法2: 运行图片记录推理测试（推荐）
 ```bash
-python model_analysis.py
+python run_image_inference.py
 ```
-生成报告目录: `analysis_report/`
 
-#### 2. 推理基准测试
-```bash
-python inference_benchmark.py
-```
-生成报告目录: `benchmark_report/`
-
-**注意**: 此脚本只进行真实推理测试，如果模型加载失败会显示错误信息。
-
-#### 3. Neta Lumina优化分析
-```bash
-python neta_lumina_analysis.py
-```
-生成报告目录: `neta_optimization_report/`
-
-#### 4. 真实推理测试（推荐）
-```bash
-python real_inference_test.py
-```
-生成报告目录: `real_inference_report/`
-
-#### 5. 推理测试与图片整理（推荐）
-```bash
-python run_inference_with_organization.py
-```
-- 运行完整推理测试
+这个脚本会：
+- 自动检查依赖和模型文件
+- 运行所有模型的推理测试
 - 自动保存生成的图片到 `output_images/`
 - 自动整理图片到 `organized_images/`
 - 生成HTML画廊和对比图
 - 生成基准测试报告
+
+### 方法3: 其他工具
+
+#### 单独运行推理基准测试
+```bash
+python inference_benchmark.py
+```
+
+#### 整理现有图片
+```bash
+python image_organizer.py
+```
 
 **注意**: 所有推理测试都会实际加载模型并进行推理，需要更多时间和GPU内存。如果模型加载失败，会显示具体的错误信息。
 
