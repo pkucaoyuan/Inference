@@ -101,10 +101,42 @@ class InferenceBenchmark:
             print("2. 或下载分离的组件文件到对应目录")
             return None
         
-        # Neta Lumina使用ComfyUI格式，无法直接用diffusers加载
-        print("Neta Lumina使用ComfyUI格式，跳过diffusers测试")
-        print("如需测试Neta Lumina，请使用ComfyUI或专门的加载器")
-        return None
+        # 尝试加载Neta Lumina
+        print("尝试加载Neta Lumina模型...")
+        try:
+            # 尝试使用Lumina2Pipeline加载（可能失败）
+            from diffusers import Lumina2Pipeline
+            
+            pipe = Lumina2Pipeline.from_pretrained(
+                "./Neta-Lumina",
+                torch_dtype=torch.bfloat16
+            )
+            pipe.enable_model_cpu_offload()
+            
+            results = []
+            for prompt in self.test_prompts:
+                for size in self.test_sizes:
+                    for steps in self.model_recommended_steps["Neta Lumina"]:
+                        result = self._benchmark_single_inference(
+                            pipe, prompt, size, steps, "Neta Lumina"
+                        )
+                        results.append(result)
+            
+            return {
+                'model': 'Neta Lumina (Real Test)',
+                'results': results,
+                'avg_time': np.mean([r['inference_time'] for r in results]),
+                'avg_memory': np.mean([r['gpu_memory'] for r in results])
+            }
+            
+        except Exception as e:
+            print(f"Neta Lumina加载失败: {e}")
+            print("Neta Lumina使用ComfyUI格式，无法直接用diffusers加载")
+            print("解决方案:")
+            print("1. 运行 python neta_lumina_loader.py 查看详细分析")
+            print("2. 使用ComfyUI环境运行")
+            print("3. 等待官方diffusers支持")
+            return None
     
     def _benchmark_single_inference(self, pipe, prompt: str, size: Tuple[int, int], 
                                   steps: int, model_name: str) -> Dict:

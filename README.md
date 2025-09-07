@@ -99,6 +99,7 @@ python image_organizer.py
 - **采样步数**: 30步 (官方推荐)
 - **图像尺寸**: 1024×1024 (统一测试尺寸)
 - **特殊参数**: cfg_trunc_ratio=1.0, cfg_normalization=True, max_sequence_length=256
+- **注意**: 使用ComfyUI格式，可能需要特殊处理
 
 ## 模型下载
 
@@ -325,6 +326,17 @@ organized_images/
    ```bash
    # 下载Neta Lumina模型
    python download_models.py --model neta-lumina
+   ```
+
+6. **Neta Lumina ComfyUI格式问题**
+   ```bash
+   # 分析Neta Lumina模型结构
+   python neta_lumina_loader.py
+   
+   # 或使用ComfyUI环境运行
+   # 1. 安装ComfyUI
+   # 2. 将模型文件放入ComfyUI/models/
+   # 3. 使用lumina_workflow.json工作流
    ```
 
 4. **CUDA内存不足**
