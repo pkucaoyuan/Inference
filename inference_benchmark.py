@@ -49,13 +49,15 @@ class InferenceBenchmark:
         ]
         
         self.test_sizes = [
-            (512, 512),
-            (1024, 1024),
-            (1536, 1536)
+            (1024, 1024)  # 只测试1024尺寸
         ]
         
         # 根据官方推荐设置测试步数
-        self.test_steps = [20, 30, 50]  # FLUX推荐20-50步，Lumina推荐50步，Neta Lumina推荐30步
+        self.model_recommended_steps = {
+            "FLUX": [20, 30, 50],      # FLUX推荐20-50步
+            "Lumina": [50],             # Lumina推荐50步
+            "Neta Lumina": [30]         # Neta Lumina推荐30步
+        }
     
     def benchmark_flux(self) -> Dict:
         """基准测试FLUX模型"""
@@ -148,8 +150,10 @@ class InferenceBenchmark:
                 ).images[0]
             
             # 保存生成的图片
-            timestamp = int(time.time())
-            safe_prompt = "".join(c for c in prompt[:50] if c.isalnum() or c in (' ', '-', '_')).rstrip()
+            from datetime import datetime
+            now = datetime.now()
+            timestamp = now.strftime("%Y%m%d_%H%M%S")
+            safe_prompt = "".join(c for c in prompt[:30] if c.isalnum() or c in (' ', '-', '_')).rstrip()
             filename = f"{model_name.lower().replace(' ', '_')}_{size[0]}x{size[1]}_steps_{steps}_cfg_{3.5 if model_name == 'FLUX' else 4.0 if model_name == 'Lumina' else 4.5}_{safe_prompt}_{timestamp}.png"
             image_path = self.output_dir / filename
             image.save(image_path)
@@ -198,7 +202,7 @@ class InferenceBenchmark:
             results = []
             for prompt in self.test_prompts:
                 for size in self.test_sizes:
-                    for steps in self.test_steps:
+                    for steps in self.model_recommended_steps["FLUX"]:
                         result = self._benchmark_single_inference(
                             pipe, prompt, size, steps, "FLUX"
                         )
@@ -233,7 +237,7 @@ class InferenceBenchmark:
             results = []
             for prompt in self.test_prompts:
                 for size in self.test_sizes:
-                    for steps in self.test_steps:
+                    for steps in self.model_recommended_steps["Lumina"]:
                         result = self._benchmark_single_inference(
                             pipe, prompt, size, steps, "Lumina"
                         )
