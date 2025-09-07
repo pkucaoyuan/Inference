@@ -1,0 +1,16 @@
+# 模型文件使用Git LFS
+*.safetensors filter=lfs diff=lfs merge=lfs -text
+*.bin filter=lfs diff=lfs merge=lfs -text
+*.pt filter=lfs diff=lfs merge=lfs -text
+*.pth filter=lfs diff=lfs merge=lfs -text
+*.ckpt filter=lfs diff=lfs merge=lfs -text
+
+# 大文件使用LFS
+*.zip filter=lfs diff=lfs merge=lfs -text
+*.tar.gz filter=lfs diff=lfs merge=lfs -text
+*.7z filter=lfs diff=lfs merge=lfs -text
+
+# 模型目录
+FLUX.1-dev/** filter=lfs diff=lfs merge=lfs -text
+Lumina-Image-2.0/** filter=lfs diff=lfs merge=lfs -text
+Neta-Lumina/** filter=lfs diff=lfs merge=lfs -text

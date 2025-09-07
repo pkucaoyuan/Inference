@@ -75,21 +75,60 @@ python neta_lumina_analysis.py
 
 ## 模型下载
 
-### FLUX模型
+### 方法1: 自动下载脚本（推荐）
+```bash
+# 下载所有模型
+python download_models.py
+
+# 只下载特定模型
+python download_models.py --models lumina neta
+
+# 生成下载链接文件
+python download_models.py --method links
+```
+
+### 方法2: 手动下载
+
+#### FLUX模型
 FLUX模型需要申请访问权限：
 1. 访问 https://huggingface.co/black-forest-labs/FLUX.1-dev
 2. 申请访问权限
 3. 使用Hugging Face token登录后下载
 
-### Lumina模型
+```bash
+# 需要先登录Hugging Face
+huggingface-cli login
+git clone https://huggingface.co/black-forest-labs/FLUX.1-dev
+```
+
+#### Lumina模型
 ```bash
 git clone https://huggingface.co/Alpha-VLLM/Lumina-Image-2.0
 ```
 
-### Neta Lumina模型
+#### Neta Lumina模型
 ```bash
 git clone https://huggingface.co/neta-art/Neta-Lumina
 ```
+
+### 方法3: 使用Git LFS
+如果模型文件已通过Git LFS上传：
+```bash
+# 安装Git LFS
+git lfs install
+
+# 克隆仓库（自动下载LFS文件）
+git clone https://github.com/pkucaoyuan/Inference.git
+cd Inference
+git lfs pull
+```
+
+### 模型文件大小
+- **FLUX.1-dev**: ~23GB
+- **Lumina-Image-2.0**: ~4GB  
+- **Neta-Lumina**: ~4GB
+
+**注意**: 确保有足够的磁盘空间和稳定的网络连接。
 
 ## 分析内容
 
