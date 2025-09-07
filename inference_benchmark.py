@@ -58,8 +58,8 @@ class InferenceBenchmark:
         print("开始测试FLUX模型...")
         
         if not DIFFUSERS_AVAILABLE:
-            print("diffusers库不可用，使用模拟模式")
-            return self._simulate_flux_benchmark()
+            print("错误: diffusers库不可用，无法进行真实推理测试")
+            return None
         
         # 直接调用真实测试函数
         return self._real_flux_benchmark()
@@ -69,8 +69,8 @@ class InferenceBenchmark:
         print("开始测试Lumina模型...")
         
         if not DIFFUSERS_AVAILABLE:
-            print("diffusers库不可用，使用模拟模式")
-            return self._simulate_lumina_benchmark()
+            print("错误: diffusers库不可用，无法进行真实推理测试")
+            return None
         
         # 直接调用真实测试函数
         return self._real_lumina_benchmark()
@@ -109,8 +109,7 @@ class InferenceBenchmark:
             
         except Exception as e:
             print(f"Neta Lumina真实测试失败: {e}")
-            print("回退到模拟模式...")
-            return self._simulate_neta_lumina_benchmark()
+            return None
     
     def _benchmark_single_inference(self, pipe, prompt: str, size: Tuple[int, int], 
                                   steps: int, model_name: str) -> Dict:
@@ -200,8 +199,7 @@ class InferenceBenchmark:
             
         except Exception as e:
             print(f"FLUX真实测试失败: {e}")
-            print("回退到模拟模式...")
-            return self._simulate_flux_benchmark()
+            return None
     
     def _real_lumina_benchmark(self) -> Dict:
         """真实Lumina基准测试"""
@@ -236,101 +234,10 @@ class InferenceBenchmark:
             
         except Exception as e:
             print(f"Lumina真实测试失败: {e}")
-            print("回退到模拟模式...")
-            return self._simulate_lumina_benchmark()
+            return None
     
-    def _simulate_flux_benchmark(self) -> Dict:
-        """模拟FLUX基准测试"""
-        print("使用模拟模式测试FLUX...")
-        
-        results = []
-        for prompt in self.test_prompts:
-            for size in self.test_sizes:
-                for steps in self.test_steps:
-                    # 基于FLUX特性的模拟时间
-                    base_time = 1.5  # 基础时间
-                    size_factor = (size[0] * size[1]) / (1024 * 1024)
-                    steps_factor = steps / 20
-                    
-                    simulated_time = base_time * size_factor * steps_factor
-                    
-                    results.append({
-                        'prompt': prompt,
-                        'size': size,
-                        'steps': steps,
-                        'inference_time': simulated_time,
-                        'gpu_memory': 8.0,  # 模拟GPU内存使用
-                        'success': True
-                    })
-        
-        return {
-            'model': 'FLUX (模拟)',
-            'results': results,
-            'avg_time': np.mean([r['inference_time'] for r in results]),
-            'avg_memory': np.mean([r['gpu_memory'] for r in results])
-        }
     
-    def _simulate_lumina_benchmark(self) -> Dict:
-        """模拟Lumina基准测试"""
-        print("使用模拟模式测试Lumina...")
-        
-        results = []
-        for prompt in self.test_prompts:
-            for size in self.test_sizes:
-                for steps in self.test_steps:
-                    # 基于Lumina特性的模拟时间（Flow-based，通常更快）
-                    base_time = 1.2  # 基础时间
-                    size_factor = (size[0] * size[1]) / (1024 * 1024)
-                    steps_factor = steps / 20
-                    
-                    simulated_time = base_time * size_factor * steps_factor
-                    
-                    results.append({
-                        'prompt': prompt,
-                        'size': size,
-                        'steps': steps,
-                        'inference_time': simulated_time,
-                        'gpu_memory': 6.0,  # 模拟GPU内存使用
-                        'success': True
-                    })
-        
-        return {
-            'model': 'Lumina (模拟)',
-            'results': results,
-            'avg_time': np.mean([r['inference_time'] for r in results]),
-            'avg_memory': np.mean([r['gpu_memory'] for r in results])
-        }
     
-    def _simulate_neta_lumina_benchmark(self) -> Dict:
-        """模拟Neta Lumina基准测试"""
-        print("使用模拟模式测试Neta Lumina...")
-        
-        results = []
-        for prompt in self.test_prompts:
-            for size in self.test_sizes:
-                for steps in self.test_steps:
-                    # 基于Neta Lumina特性的模拟时间（可能有优化）
-                    base_time = 1.0  # 基础时间（比Lumina稍快）
-                    size_factor = (size[0] * size[1]) / (1024 * 1024)
-                    steps_factor = steps / 20
-                    
-                    simulated_time = base_time * size_factor * steps_factor
-                    
-                    results.append({
-                        'prompt': prompt,
-                        'size': size,
-                        'steps': steps,
-                        'inference_time': simulated_time,
-                        'gpu_memory': 5.5,  # 模拟GPU内存使用
-                        'success': True
-                    })
-        
-        return {
-            'model': 'Neta Lumina (模拟)',
-            'results': results,
-            'avg_time': np.mean([r['inference_time'] for r in results]),
-            'avg_memory': np.mean([r['gpu_memory'] for r in results])
-        }
     
     def _get_gpu_memory(self) -> float:
         """获取GPU内存使用量"""
@@ -347,7 +254,18 @@ class InferenceBenchmark:
         lumina_results = self.benchmark_lumina()
         neta_results = self.benchmark_neta_lumina()
         
-        self.results = [flux_results, lumina_results, neta_results]
+        # 只收集成功的结果
+        self.results = []
+        if flux_results:
+            self.results.append(flux_results)
+        if lumina_results:
+            self.results.append(lumina_results)
+        if neta_results:
+            self.results.append(neta_results)
+        
+        if not self.results:
+            print("错误: 所有模型测试都失败了，无法生成报告")
+            return []
         
         # 生成报告
         self.generate_benchmark_report()

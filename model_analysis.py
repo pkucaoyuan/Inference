@@ -301,18 +301,8 @@ class ModelAnalyzer:
             
         except Exception as e:
             print(f"FLUX真实推理失败: {e}")
-            # 回退到模拟
-            return self._simulate_flux_inference(prompt, image_size, num_steps)
+            return 0.0
     
-    def _simulate_flux_inference(self, prompt: str, image_size: Tuple[int, int], num_steps: int) -> float:
-        """模拟FLUX模型推理"""
-        # 基于FLUX模型的特性估算推理时间
-        # FLUX通常比传统扩散模型更快
-        base_time = 2.0  # 基础推理时间
-        size_factor = (image_size[0] * image_size[1]) / (1024 * 1024)
-        steps_factor = num_steps / 20
-        
-        return base_time * size_factor * steps_factor
     
     def _real_lumina_inference(self, prompt: str, image_size: Tuple[int, int], num_steps: int) -> float:
         """真实Lumina模型推理"""
@@ -341,17 +331,8 @@ class ModelAnalyzer:
             
         except Exception as e:
             print(f"Lumina真实推理失败: {e}")
-            # 回退到模拟
-            return self._simulate_lumina_inference(prompt, image_size, num_steps)
+            return 0.0
     
-    def _simulate_lumina_inference(self, prompt: str, image_size: Tuple[int, int], num_steps: int) -> float:
-        """模拟Lumina模型推理"""
-        # Lumina使用Flow-based扩散，通常比传统扩散模型快
-        base_time = 1.5  # 基础推理时间
-        size_factor = (image_size[0] * image_size[1]) / (1024 * 1024)
-        steps_factor = num_steps / 20
-        
-        return base_time * size_factor * steps_factor
     
     def _real_neta_lumina_inference(self, prompt: str, image_size: Tuple[int, int], num_steps: int) -> float:
         """真实Neta Lumina模型推理"""
@@ -380,17 +361,8 @@ class ModelAnalyzer:
             
         except Exception as e:
             print(f"Neta Lumina真实推理失败: {e}")
-            # 回退到模拟
-            return self._simulate_neta_lumina_inference(prompt, image_size, num_steps)
+            return 0.0
     
-    def _simulate_neta_lumina_inference(self, prompt: str, image_size: Tuple[int, int], num_steps: int) -> float:
-        """模拟Neta Lumina模型推理"""
-        # Neta Lumina基于Lumina，可能有进一步优化
-        base_time = 1.2  # 基础推理时间（比Lumina稍快）
-        size_factor = (image_size[0] * image_size[1]) / (1024 * 1024)
-        steps_factor = num_steps / 20
-        
-        return base_time * size_factor * steps_factor
     
     def _get_memory_usage(self) -> Dict[str, float]:
         """获取内存使用情况"""
