@@ -58,48 +58,35 @@ class InferenceBenchmark:
         print("开始测试FLUX模型...")
         
         if not DIFFUSERS_AVAILABLE:
+            print("diffusers库不可用，使用模拟模式")
             return self._simulate_flux_benchmark()
         
-        try:
-            # 加载FLUX模型
-            pipe = FluxPipeline.from_pretrained(
-                "./FLUX.1-dev",
-                torch_dtype=torch.bfloat16,
-                device_map="auto"
-            )
-            
-            results = []
-            for prompt in self.test_prompts:
-                for size in self.test_sizes:
-                    for steps in self.test_steps:
-                        result = self._benchmark_single_inference(
-                            pipe, prompt, size, steps, "FLUX"
-                        )
-                        results.append(result)
-            
-            return {
-                'model': 'FLUX',
-                'results': results,
-                'avg_time': np.mean([r['inference_time'] for r in results]),
-                'avg_memory': np.mean([r['gpu_memory'] for r in results])
-            }
-            
-        except Exception as e:
-            print(f"FLUX模型测试失败: {e}")
-            return self._simulate_flux_benchmark()
+        # 直接调用真实测试函数
+        return self._real_flux_benchmark()
     
     def benchmark_lumina(self) -> Dict:
         """基准测试Lumina模型"""
         print("开始测试Lumina模型...")
         
         if not DIFFUSERS_AVAILABLE:
+            print("diffusers库不可用，使用模拟模式")
             return self._simulate_lumina_benchmark()
         
+        # 直接调用真实测试函数
+        return self._real_lumina_benchmark()
+    
+    def benchmark_neta_lumina(self) -> Dict:
+        """基准测试Neta Lumina模型"""
+        print("开始测试Neta Lumina模型...")
+        
+        # 尝试使用Lumina2Pipeline加载Neta Lumina模型
         try:
-            # 加载Lumina模型
             from diffusers import Lumina2Pipeline
+            
+            print("正在加载Neta Lumina模型...")
+            # 尝试从Neta-Lumina目录加载
             pipe = Lumina2Pipeline.from_pretrained(
-                "./Lumina-Image-2.0",
+                "./Neta-Lumina",
                 torch_dtype=torch.bfloat16
             )
             pipe.enable_model_cpu_offload()
@@ -109,27 +96,21 @@ class InferenceBenchmark:
                 for size in self.test_sizes:
                     for steps in self.test_steps:
                         result = self._benchmark_single_inference(
-                            pipe, prompt, size, steps, "Lumina"
+                            pipe, prompt, size, steps, "Neta Lumina"
                         )
                         results.append(result)
             
             return {
-                'model': 'Lumina',
+                'model': 'Neta Lumina (真实测试)',
                 'results': results,
                 'avg_time': np.mean([r['inference_time'] for r in results]),
                 'avg_memory': np.mean([r['gpu_memory'] for r in results])
             }
             
         except Exception as e:
-            print(f"Lumina模型测试失败: {e}")
-            return self._simulate_lumina_benchmark()
-    
-    def benchmark_neta_lumina(self) -> Dict:
-        """基准测试Neta Lumina模型"""
-        print("开始测试Neta Lumina模型...")
-        
-        # Neta Lumina通常需要ComfyUI，这里提供模拟测试
-        return self._simulate_neta_lumina_benchmark()
+            print(f"Neta Lumina真实测试失败: {e}")
+            print("回退到模拟模式...")
+            return self._simulate_neta_lumina_benchmark()
     
     def _benchmark_single_inference(self, pipe, prompt: str, size: Tuple[int, int], 
                                   steps: int, model_name: str) -> Dict:
@@ -152,7 +133,7 @@ class InferenceBenchmark:
                     num_inference_steps=steps,
                     guidance_scale=7.5
                 ).images[0]
-            elif model_name == "Lumina":
+            elif model_name in ["Lumina", "Neta Lumina"]:
                 image = pipe(
                     prompt,
                     height=size[0],
@@ -185,6 +166,78 @@ class InferenceBenchmark:
                 'success': False,
                 'error': str(e)
             }
+    
+    def _real_flux_benchmark(self) -> Dict:
+        """真实FLUX基准测试"""
+        print("开始真实FLUX模型测试...")
+        
+        try:
+            # 尝试加载FLUX模型
+            from diffusers import FluxPipeline
+            
+            print("正在加载FLUX模型...")
+            pipe = FluxPipeline.from_pretrained(
+                "./FLUX.1-dev",
+                torch_dtype=torch.bfloat16,
+                device_map="cuda"  # 使用cuda而不是auto
+            )
+            
+            results = []
+            for prompt in self.test_prompts:
+                for size in self.test_sizes:
+                    for steps in self.test_steps:
+                        result = self._benchmark_single_inference(
+                            pipe, prompt, size, steps, "FLUX"
+                        )
+                        results.append(result)
+            
+            return {
+                'model': 'FLUX (真实测试)',
+                'results': results,
+                'avg_time': np.mean([r['inference_time'] for r in results]),
+                'avg_memory': np.mean([r['gpu_memory'] for r in results])
+            }
+            
+        except Exception as e:
+            print(f"FLUX真实测试失败: {e}")
+            print("回退到模拟模式...")
+            return self._simulate_flux_benchmark()
+    
+    def _real_lumina_benchmark(self) -> Dict:
+        """真实Lumina基准测试"""
+        print("开始真实Lumina模型测试...")
+        
+        try:
+            # 尝试加载Lumina模型
+            from diffusers import Lumina2Pipeline
+            
+            print("正在加载Lumina模型...")
+            pipe = Lumina2Pipeline.from_pretrained(
+                "./Lumina-Image-2.0",
+                torch_dtype=torch.bfloat16
+            )
+            pipe.enable_model_cpu_offload()
+            
+            results = []
+            for prompt in self.test_prompts:
+                for size in self.test_sizes:
+                    for steps in self.test_steps:
+                        result = self._benchmark_single_inference(
+                            pipe, prompt, size, steps, "Lumina"
+                        )
+                        results.append(result)
+            
+            return {
+                'model': 'Lumina (真实测试)',
+                'results': results,
+                'avg_time': np.mean([r['inference_time'] for r in results]),
+                'avg_memory': np.mean([r['gpu_memory'] for r in results])
+            }
+            
+        except Exception as e:
+            print(f"Lumina真实测试失败: {e}")
+            print("回退到模拟模式...")
+            return self._simulate_lumina_benchmark()
     
     def _simulate_flux_benchmark(self) -> Dict:
         """模拟FLUX基准测试"""

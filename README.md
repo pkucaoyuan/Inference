@@ -73,6 +73,14 @@ python neta_lumina_analysis.py
 ```
 生成报告目录: `neta_optimization_report/`
 
+#### 4. 真实推理测试（推荐）
+```bash
+python real_inference_test.py
+```
+生成报告目录: `real_inference_report/`
+
+**注意**: 真实推理测试会实际加载模型并进行推理，需要更多时间和GPU内存。
+
 ## 模型下载
 
 ### 方法1: 自动下载脚本（推荐）
