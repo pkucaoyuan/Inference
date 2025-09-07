@@ -42,7 +42,8 @@ def main():
     
     # 可选依赖
     optional_packages = [
-        "GPUtil"
+        "GPUtil",  # GPU监控
+        "protobuf",  # FLUX模型需要
     ]
     
     print("安装必需依赖...")

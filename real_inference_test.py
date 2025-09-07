@@ -307,7 +307,7 @@ class RealInferenceTester:
                 model_times[model] = []
             model_times[model].append(time)
         
-        axes[1, 0].boxplot([model_times[model] for model in models], labels=models)
+        axes[1, 0].boxplot([model_times[model] for model in models], tick_labels=models)
         axes[1, 0].set_title('Inference Time Distribution')
         axes[1, 0].set_ylabel('Time (seconds)')
         axes[1, 0].tick_params(axis='x', rotation=45)

@@ -33,10 +33,13 @@ except ImportError:
 class InferenceBenchmark:
     """推理基准测试器"""
     
-    def __init__(self):
+    def __init__(self, output_dir: str = "./output_images"):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.results = []
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(exist_ok=True)
         print(f"使用设备: {self.device}")
+        print(f"输出目录: {self.output_dir}")
         
         # 测试配置
         self.test_prompts = [
@@ -79,6 +82,15 @@ class InferenceBenchmark:
     def benchmark_neta_lumina(self) -> Dict:
         """基准测试Neta Lumina模型"""
         print("开始测试Neta Lumina模型...")
+        
+        # 检查Neta Lumina模型文件是否存在
+        neta_dir = Path("./Neta-Lumina")
+        if not (neta_dir / "model_index.json").exists():
+            print("Neta Lumina模型文件不完整，跳过测试")
+            print("请下载完整的Neta Lumina模型文件:")
+            print("1. 下载 neta-lumina-v1.0-all-in-one.safetensors")
+            print("2. 或下载分离的组件文件到对应目录")
+            return None
         
         # 尝试使用Lumina2Pipeline加载Neta Lumina模型
         try:
@@ -154,6 +166,14 @@ class InferenceBenchmark:
                     num_inference_steps=steps,
                     guidance_scale=4.5  # 使用推荐范围中间值
                 ).images[0]
+            
+            # 保存生成的图片
+            timestamp = int(time.time())
+            safe_prompt = "".join(c for c in prompt[:50] if c.isalnum() or c in (' ', '-', '_')).rstrip()
+            filename = f"{model_name.lower().replace(' ', '_')}_{size[0]}x{size[1]}_steps_{steps}_cfg_{3.5 if model_name == 'FLUX' else 4.0 if model_name == 'Lumina' else 4.5}_{safe_prompt}_{timestamp}.png"
+            image_path = self.output_dir / filename
+            image.save(image_path)
+            print(f"保存图片: {image_path}")
             
             # 记录结束状态
             end_time = time.time()
@@ -256,7 +276,11 @@ class InferenceBenchmark:
     def _get_gpu_memory(self) -> float:
         """获取GPU内存使用量"""
         if torch.cuda.is_available():
-            return torch.cuda.memory_allocated() / (1024**3)  # GB
+            # 获取当前分配的内存
+            allocated = torch.cuda.memory_allocated() / (1024**3)  # GB
+            # 获取缓存的内存
+            cached = torch.cuda.memory_reserved() / (1024**3)  # GB
+            return allocated + cached
         return 0.0
     
     def run_all_benchmarks(self):

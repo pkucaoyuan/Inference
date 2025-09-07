@@ -48,7 +48,13 @@ Thumbs.db
 analysis_report/
 benchmark_report/
 neta_optimization_report/
+real_inference_report/
 analysis_summary.txt
+
+# 图片输出目录
+output_images/
+organized_images/
+*_organized/
 
 # 日志文件
 *.log

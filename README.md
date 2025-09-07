@@ -81,6 +81,16 @@ python real_inference_test.py
 ```
 生成报告目录: `real_inference_report/`
 
+#### 5. 推理测试与图片整理（推荐）
+```bash
+python run_inference_with_organization.py
+```
+- 运行完整推理测试
+- 自动保存生成的图片到 `output_images/`
+- 自动整理图片到 `organized_images/`
+- 生成HTML画廊和对比图
+- 生成基准测试报告
+
 **注意**: 所有推理测试都会实际加载模型并进行推理，需要更多时间和GPU内存。如果模型加载失败，会显示具体的错误信息。
 
 ## 官方推荐推理参数
@@ -252,6 +262,43 @@ git lfs pull
    - 至少16GB显存
    - 使用NVMe SSD存储
 
+## 图片整理功能
+
+### 自动图片整理
+运行推理测试后，可以使用图片整理工具自动整理生成的图片：
+
+```bash
+# 整理指定目录的图片
+python image_organizer.py --input-dir ./output_images --output-dir ./organized_images
+
+# 使用默认目录
+python image_organizer.py
+```
+
+### 整理功能特性
+- **按模型分类**: 自动识别并分类FLUX、Lumina、Neta Lumina的图片
+- **按参数分类**: 按尺寸、步数、guidance scale等参数分类
+- **生成对比图**: 自动创建相同参数下的模型对比图
+- **HTML画廊**: 生成可浏览的HTML图片画廊
+- **统计报告**: 生成详细的图片统计报告
+
+### 输出目录结构
+```
+organized_images/
+├── gallery.html              # HTML画廊
+├── summary_report.json       # 统计报告
+├── comparisons/              # 模型对比图
+│   ├── comparison_1024x1024_steps_30.png
+│   └── ...
+└── individual/               # 按模型分类
+    ├── FLUX/
+    │   ├── by_size/
+    │   ├── by_steps/
+    │   └── by_prompt/
+    ├── Lumina/
+    └── Neta_Lumina/
+```
+
 ## 故障排除
 
 ### 常见问题
@@ -278,6 +325,17 @@ git lfs pull
    - 检查模型文件完整性
    - 确认有足够的GPU内存
    - 查看具体错误信息进行排查
+
+4. **FLUX模型protobuf错误**
+   ```bash
+   pip install protobuf
+   ```
+
+5. **Neta Lumina模型文件缺失**
+   ```bash
+   # 下载Neta Lumina模型
+   python download_neta_lumina.py
+   ```
 
 4. **CUDA内存不足**
    - 减少图像尺寸
