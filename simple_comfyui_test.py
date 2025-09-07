@@ -321,7 +321,7 @@ class SimpleComfyUITester:
             print(f"❌ 从输出目录获取图片失败: {e}")
             return None
     
-    def run_inference_test(self, prompt, negative_prompt="", steps=30, cfg=4.0):
+    def run_inference_test(self, prompt, negative_prompt="", steps=20, cfg=4.0):
         """运行推理测试"""
         print(f"\n开始推理测试...")
         print(f"提示词: {prompt}")
@@ -386,19 +386,19 @@ class SimpleComfyUITester:
             {
                 "prompt": "A beautiful anime character in a magical garden, detailed, high quality",
                 "negative_prompt": "",
-                "steps": 30,
+                "steps": 20,
                 "cfg": 4.0
             },
             {
                 "prompt": "A futuristic city with flying cars, cyberpunk style, anime",
                 "negative_prompt": "blurry, low quality",
-                "steps": 30,
+                "steps": 20,
                 "cfg": 5.0
             },
             {
                 "prompt": "A cute cat in a cozy room, warm lighting, detailed",
                 "negative_prompt": "",
-                "steps": 30,
+                "steps": 20,
                 "cfg": 5.5
             }
         ]
@@ -495,7 +495,7 @@ def main():
     parser.add_argument("--prompt", default="A beautiful anime character in a magical garden, detailed, high quality", 
                        help="推理提示词")
     parser.add_argument("--negative-prompt", default="", help="负面提示词")
-    parser.add_argument("--steps", type=int, default=30, help="推理步数")
+    parser.add_argument("--steps", type=int, default=20, help="推理步数")
     parser.add_argument("--cfg", type=float, default=4.0, help="CFG值")
     parser.add_argument("--batch", action="store_true", help="运行批量测试")
     
