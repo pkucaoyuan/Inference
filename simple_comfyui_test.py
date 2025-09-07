@@ -216,7 +216,11 @@ class SimpleComfyUITester:
                     if not queue_pending and not queue_running:
                         print("✅ 推理完成！")
                         # 尝试获取生成的图片
-                        return self.get_generated_image()
+                        image_data = self.get_generated_image()
+                        if image_data is None:
+                            print("尝试从输出目录获取图片...")
+                            image_data = self.get_latest_image_from_output()
+                        return image_data
                     
                     print(f"队列状态: 等待中 {len(queue_pending)}, 运行中 {len(queue_running)}")
                 
@@ -231,39 +235,90 @@ class SimpleComfyUITester:
     def get_generated_image(self):
         """获取生成的图片"""
         try:
+            # 等待一下让ComfyUI完成图片保存
+            time.sleep(2)
+            
             # 获取历史记录
             response = requests.get(f"{self.comfyui_url}/history")
             if response.status_code == 200:
                 history = response.json()
+                print(f"历史记录数量: {len(history)}")
                 
                 # 找到最新的完成记录
+                latest_success = None
                 for prompt_id, data in history.items():
-                    if data.get('status', {}).get('status_str') == 'success':
-                        outputs = data.get('outputs', {})
-                        
-                        # 查找PreviewImage节点的输出
-                        for node_id, node_output in outputs.items():
-                            if 'images' in node_output:
-                                images = node_output['images']
-                                if images:
-                                    # 获取第一张图片
-                                    image_info = images[0]
-                                    image_filename = image_info.get('filename')
-                                    
-                                    if image_filename:
-                                        # 下载图片
-                                        image_response = requests.get(f"{self.comfyui_url}/view?filename={image_filename}")
-                                        if image_response.status_code == 200:
-                                            return image_response.content
-                                        
-                print("⚠️ 未找到生成的图片")
-                return None
+                    status = data.get('status', {})
+                    if status.get('status_str') == 'success':
+                        latest_success = (prompt_id, data)
+                
+                if latest_success:
+                    prompt_id, data = latest_success
+                    print(f"找到成功记录: {prompt_id}")
+                    outputs = data.get('outputs', {})
+                    print(f"输出节点数量: {len(outputs)}")
+                    
+                    # 查找所有可能的图片输出节点
+                    for node_id, node_output in outputs.items():
+                        print(f"检查节点 {node_id}: {node_output}")
+                        if 'images' in node_output:
+                            images = node_output['images']
+                            if images:
+                                # 获取第一张图片
+                                image_info = images[0]
+                                image_filename = image_info.get('filename')
+                                print(f"找到图片文件: {image_filename}")
+                                
+                                if image_filename:
+                                    # 下载图片
+                                    image_response = requests.get(f"{self.comfyui_url}/view?filename={image_filename}")
+                                    if image_response.status_code == 200:
+                                        print(f"✅ 成功下载图片: {image_filename}")
+                                        return image_response.content
+                                    else:
+                                        print(f"❌ 下载图片失败: {image_response.status_code}")
+                else:
+                    print("⚠️ 未找到成功的推理记录")
+                    return None
             else:
                 print(f"❌ 获取历史记录失败: {response.status_code}")
                 return None
                 
         except Exception as e:
             print(f"❌ 获取图片失败: {e}")
+            return None
+    
+    def get_latest_image_from_output(self):
+        """从ComfyUI输出目录获取最新图片"""
+        try:
+            # ComfyUI默认输出目录
+            output_dirs = [
+                "ComfyUI/output",
+                "output", 
+                "ComfyUI/outputs",
+                "outputs"
+            ]
+            
+            for output_dir in output_dirs:
+                if os.path.exists(output_dir):
+                    # 获取目录中所有图片文件
+                    image_files = []
+                    for ext in ['*.png', '*.jpg', '*.jpeg']:
+                        image_files.extend(Path(output_dir).glob(ext))
+                    
+                    if image_files:
+                        # 按修改时间排序，获取最新的
+                        latest_file = max(image_files, key=os.path.getmtime)
+                        print(f"找到最新图片: {latest_file}")
+                        
+                        # 读取图片
+                        with open(latest_file, 'rb') as f:
+                            return f.read()
+            
+            print("⚠️ 在输出目录中未找到图片文件")
+            return None
+            
+        except Exception as e:
+            print(f"❌ 从输出目录获取图片失败: {e}")
             return None
     
     def run_inference_test(self, prompt, negative_prompt="", steps=30, cfg=4.0):
