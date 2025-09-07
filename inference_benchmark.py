@@ -36,7 +36,10 @@ class InferenceBenchmark:
     def __init__(self, output_dir: str = "./output_images"):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.results = []
-        self.output_dir = Path(output_dir)
+        
+        # 使用时间戳创建唯一的输出目录
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        self.output_dir = Path(f"{output_dir}_{timestamp}")
         self.output_dir.mkdir(exist_ok=True)
         print(f"使用设备: {self.device}")
         print(f"输出目录: {self.output_dir}")
@@ -192,11 +195,8 @@ class InferenceBenchmark:
                 ).images[0]
             
             # 保存生成的图片
-            from datetime import datetime
-            now = datetime.now()
-            timestamp = now.strftime("%Y%m%d_%H%M%S")
             safe_prompt = "".join(c for c in prompt[:30] if c.isalnum() or c in (' ', '-', '_')).rstrip()
-            filename = f"{model_name.lower().replace(' ', '_')}_{size[0]}x{size[1]}_steps_{steps}_cfg_{3.5 if model_name == 'FLUX' else 4.0 if model_name == 'Lumina' else 4.5}_{safe_prompt}_{timestamp}.png"
+            filename = f"{model_name.lower().replace(' ', '_')}_{size[0]}x{size[1]}_steps_{steps}_cfg_{3.5 if model_name == 'FLUX' else 4.0 if model_name == 'Lumina' else 4.5}_{safe_prompt}.png"
             image_path = self.output_dir / filename
             image.save(image_path)
             print(f"保存图片: {image_path}")

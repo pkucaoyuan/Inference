@@ -61,9 +61,13 @@ def test_neta_lumina_all_in_one():
         ).images[0]
         end_time = time.time()
         
-        # 保存图片
+        # 创建带时间戳的输出目录
         timestamp = time.strftime("%Y%m%d_%H%M%S")
-        output_path = f"neta_lumina_test_{timestamp}.png"
+        output_dir = Path(f"neta_lumina_test_{timestamp}")
+        output_dir.mkdir(exist_ok=True)
+        
+        # 保存图片
+        output_path = output_dir / "test_image.png"
         image.save(output_path)
         
         print(f"推理完成！")

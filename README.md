@@ -263,10 +263,20 @@ python image_organizer.py
 ```
 
 ### 整理功能特性
+- **时间戳文件夹**: 每次实验创建带时间戳的独立文件夹，避免文件覆盖
 - **按模型分类**: 自动识别并分类FLUX、Lumina、Neta Lumina的图片
 - **按参数分类**: 按尺寸、步数、guidance scale等参数分类
 - **生成对比图**: 自动创建相同参数下的模型对比图
 - **HTML画廊**: 生成可浏览的HTML图片画廊
+
+### 文件夹结构示例
+
+```
+output_images_20250107_143022/          # 带时间戳的输出目录
+├── flux_1024x1024_steps_50_cfg_3.5_A_beautiful_landscape.png
+├── lumina_1024x1024_steps_30_cfg_4.0_A_beautiful_landscape.png
+└── ...
+```
 - **统计报告**: 生成详细的图片统计报告
 
 ### 输出目录结构
