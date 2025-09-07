@@ -192,8 +192,11 @@ class ComfyUITester:
             ], capture_output=True, text=True)
             
             if result.returncode == 0:
-                memory_mb = float(result.stdout.strip())
-                return memory_mb / 1024.0  # 转换为GB
+                # 处理多GPU情况，取第一个GPU的内存使用量
+                lines = result.stdout.strip().split('\n')
+                if lines and lines[0]:
+                    memory_mb = float(lines[0])
+                    return memory_mb / 1024.0  # 转换为GB
         except Exception as e:
             print(f"获取GPU内存失败: {e}")
         
@@ -208,24 +211,80 @@ class ComfyUITester:
             print(f"获取系统内存失败: {e}")
             return 0.0
     
+    def load_workflow(self):
+        """加载工作流文件"""
+        workflow_file = Path("./Neta-Lumina/lumina_workflow.json")
+        if not workflow_file.exists():
+            print(f"❌ 工作流文件不存在: {workflow_file}")
+            return None
+        
+        try:
+            with open(workflow_file, 'r', encoding='utf-8') as f:
+                workflow = json.load(f)
+            print(f"✅ 加载工作流: {workflow_file}")
+            return workflow
+        except Exception as e:
+            print(f"❌ 加载工作流失败: {e}")
+            return None
+    
+    def modify_workflow(self, workflow, prompt, negative_prompt="", steps=30, cfg=4.0):
+        """修改工作流参数"""
+        if "nodes" not in workflow:
+            print("❌ 工作流格式不正确")
+            return workflow
+        
+        # 查找文本输入节点
+        text_encode_nodes = []
+        sampler_nodes = []
+        
+        for node in workflow["nodes"]:
+            if node.get("type") == "CLIPTextEncode":
+                text_encode_nodes.append(node)
+            elif node.get("type") == "KSampler":
+                sampler_nodes.append(node)
+        
+        # 修改文本编码节点
+        for i, node in enumerate(text_encode_nodes):
+            if "widgets_values" in node and len(node["widgets_values"]) > 0:
+                if i == 0:  # 第一个通常是正面提示词
+                    node["widgets_values"][0] = prompt
+                elif i == 1:  # 第二个通常是负面提示词
+                    node["widgets_values"][0] = negative_prompt
+        
+        # 修改采样器节点
+        for node in sampler_nodes:
+            if "widgets_values" in node and len(node["widgets_values"]) >= 4:
+                # widgets_values通常包含: [model, positive, negative, latent_image, seed, steps, cfg, sampler_name, scheduler, denoise]
+                node["widgets_values"][5] = steps  # steps
+                node["widgets_values"][6] = cfg    # cfg
+                node["widgets_values"][4] = int(time.time()) % 1000000  # seed
+        
+        return workflow
+    
     def send_inference_request(self, prompt, negative_prompt="", steps=30, cfg=4.0):
         """发送推理请求"""
-        workflow_data = {
-            "prompt": prompt,
-            "negative_prompt": negative_prompt,
-            "steps": steps,
-            "cfg": cfg,
-            "width": 1024,
-            "height": 1024
+        # 加载工作流
+        workflow = self.load_workflow()
+        if not workflow:
+            return False
+        
+        # 修改工作流参数
+        workflow = self.modify_workflow(workflow, prompt, negative_prompt, steps, cfg)
+        
+        # 构建请求数据
+        request_data = {
+            "prompt": workflow,
+            "client_id": "neta_lumina_test"
         }
         
         try:
-            response = requests.post(f"{self.comfyui_url}/prompt", json=workflow_data)
+            response = requests.post(f"{self.comfyui_url}/prompt", json=request_data)
             if response.status_code == 200:
                 print("✅ 推理请求已发送")
                 return True
             else:
                 print(f"❌ 推理请求失败: {response.status_code}")
+                print(f"响应内容: {response.text}")
                 return False
         except Exception as e:
             print(f"❌ 发送推理请求失败: {e}")
