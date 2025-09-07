@@ -1,0 +1,58 @@
+# 模型文件（太大，不上传）
+FLUX.1-dev/
+Lumina-Image-2.0/
+Neta-Lumina/
+
+# Python缓存文件
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 虚拟环境
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 分析报告（运行时生成）
+analysis_report/
+benchmark_report/
+neta_optimization_report/
+analysis_summary.txt
+
+# 日志文件
+*.log
+
+# 临时文件
+*.tmp
+*.temp
