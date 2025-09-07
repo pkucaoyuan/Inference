@@ -259,49 +259,8 @@ class ComfyUITester:
                 node["widgets_values"][2] = steps  # steps
                 node["widgets_values"][3] = cfg    # cfg
         
-        # 转换为ComfyUI期望的字典格式
-        workflow_dict = {}
-        
-        # 首先创建所有节点
-        for node in workflow["nodes"]:
-            # 跳过Note节点（注释节点）
-            if node.get("type") == "Note":
-                continue
-                
-            node_id = str(node["id"])
-            workflow_dict[node_id] = {
-                "class_type": node["type"],
-                "inputs": {},
-                "widgets_values": node.get("widgets_values", [])
-            }
-        
-        # 然后处理连接关系
-        for link in workflow.get("links", []):
-            # link格式: [link_id, source_node_id, source_slot, target_node_id, target_slot, type]
-            if len(link) >= 6:
-                source_node_id = str(link[1])
-                target_node_id = str(link[3])
-                target_slot = link[4]
-                link_id = link[0]
-                
-                # 如果目标节点存在，添加输入连接
-                if target_node_id in workflow_dict:
-                    # 查找目标节点的inputs定义来确定输入名称
-                    target_node = None
-                    for node in workflow["nodes"]:
-                        if node["id"] == int(target_node_id):
-                            target_node = node
-                            break
-                    
-                    if target_node:
-                        # 根据inputs定义找到对应的输入名称
-                        for input_def in target_node.get("inputs", []):
-                            if input_def.get("link") == link_id:
-                                input_name = input_def["name"]
-                                workflow_dict[target_node_id]["inputs"][input_name] = [source_node_id, 0]
-                                break
-        
-        return workflow_dict
+        # 直接返回修改后的工作流，ComfyUI会自动处理格式转换
+        return workflow
     
     def send_inference_request(self, prompt, negative_prompt="", steps=30, cfg=4.0):
         """发送推理请求"""
@@ -313,7 +272,7 @@ class ComfyUITester:
         # 修改工作流参数
         workflow = self.modify_workflow(workflow, prompt, negative_prompt, steps, cfg)
         
-        # 构建请求数据
+        # 直接使用原始工作流格式，ComfyUI会自动处理
         request_data = {
             "prompt": workflow,
             "client_id": "neta_lumina_test"
