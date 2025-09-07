@@ -11,7 +11,12 @@ import json
 import numpy as np
 from typing import Dict, List, Tuple
 import psutil
-import GPUtil
+try:
+    import GPUtil
+    GPUTIL_AVAILABLE = True
+except ImportError:
+    GPUTIL_AVAILABLE = False
+    print("警告: GPUtil未安装，将使用替代方案获取GPU信息")
 from pathlib import Path
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -343,9 +348,14 @@ class InferenceBenchmark:
         if not self.results:
             return
         
-        # 设置中文字体
-        plt.rcParams['font.sans-serif'] = ['SimHei', 'Arial Unicode MS']
-        plt.rcParams['axes.unicode_minus'] = False
+        # 设置字体（兼容不同系统）
+        try:
+            plt.rcParams['font.sans-serif'] = ['SimHei', 'Arial Unicode MS', 'DejaVu Sans']
+            plt.rcParams['axes.unicode_minus'] = False
+        except:
+            # 如果中文字体不可用，使用默认字体
+            plt.rcParams['font.sans-serif'] = ['DejaVu Sans']
+            plt.rcParams['axes.unicode_minus'] = False
         
         # 创建图表
         fig, axes = plt.subplots(2, 2, figsize=(15, 12))

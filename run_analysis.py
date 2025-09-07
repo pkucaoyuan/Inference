@@ -24,8 +24,14 @@ def check_dependencies():
         'safetensors'
     ]
     
-    missing_packages = []
+    optional_packages = [
+        'GPUtil'
+    ]
     
+    missing_packages = []
+    missing_optional = []
+    
+    # 检查必需依赖
     for package in required_packages:
         try:
             __import__(package)
@@ -34,11 +40,26 @@ def check_dependencies():
             missing_packages.append(package)
             print(f"✗ {package} (缺失)")
     
+    # 检查可选依赖
+    for package in optional_packages:
+        try:
+            __import__(package)
+            print(f"✓ {package}")
+        except ImportError:
+            missing_optional.append(package)
+            print(f"⚠ {package} (可选，缺失)")
+    
     if missing_packages:
-        print(f"\n缺少以下依赖库: {', '.join(missing_packages)}")
+        print(f"\n缺少以下必需依赖库: {', '.join(missing_packages)}")
         print("请运行以下命令安装:")
         print(f"pip install {' '.join(missing_packages)}")
         return False
+    
+    if missing_optional:
+        print(f"\n缺少以下可选依赖库: {', '.join(missing_optional)}")
+        print("可选依赖安装命令:")
+        print(f"pip install {' '.join(missing_optional)}")
+        print("注意: 可选依赖缺失不会影响基本功能，但可能影响某些特性")
     
     print("所有依赖库检查完成！")
     return True

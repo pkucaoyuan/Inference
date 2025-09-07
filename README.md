@@ -225,17 +225,39 @@ git lfs pull
 
 ### 常见问题
 
-1. **CUDA内存不足**
+1. **依赖库缺失**
+   ```bash
+   # 自动安装所有依赖
+   python install_dependencies.py
+   
+   # 或手动安装
+   pip install torch torchvision torchaudio
+   pip install diffusers transformers accelerate
+   pip install numpy matplotlib seaborn psutil safetensors
+   pip install huggingface_hub GPUtil  # GPUtil为可选依赖
+   ```
+
+2. **GPUtil模块缺失**
+   - GPUtil是可选依赖，缺失不会影响基本功能
+   - 安装命令: `pip install GPUtil`
+   - 主要用于获取详细的GPU信息
+
+3. **中文字体问题**
+   - 脚本已自动处理字体兼容性
+   - 如果仍有问题，图表将使用默认字体
+   - 不影响分析功能，只影响图表显示
+
+4. **CUDA内存不足**
    - 减少图像尺寸
    - 使用CPU卸载
    - 减少推理步数
 
-2. **模型加载失败**
+5. **模型加载失败**
    - 检查模型文件完整性
    - 确认访问权限
    - 更新依赖库
 
-3. **推理速度慢**
+6. **推理速度慢**
    - 检查GPU使用率
    - 优化批处理大小
    - 使用混合精度

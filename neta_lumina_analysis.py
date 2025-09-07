@@ -278,9 +278,14 @@ class NetaLuminaAnalyzer:
     
     def _generate_optimization_charts(self, report_dir: Path, analyses: Dict):
         """生成优化图表"""
-        # 设置中文字体
-        plt.rcParams['font.sans-serif'] = ['SimHei', 'Arial Unicode MS']
-        plt.rcParams['axes.unicode_minus'] = False
+        # 设置字体（兼容不同系统）
+        try:
+            plt.rcParams['font.sans-serif'] = ['SimHei', 'Arial Unicode MS', 'DejaVu Sans']
+            plt.rcParams['axes.unicode_minus'] = False
+        except:
+            # 如果中文字体不可用，使用默认字体
+            plt.rcParams['font.sans-serif'] = ['DejaVu Sans']
+            plt.rcParams['axes.unicode_minus'] = False
         
         # 创建图表
         fig, axes = plt.subplots(2, 2, figsize=(15, 12))
