@@ -259,9 +259,13 @@ class ComfyUITester:
                 node["widgets_values"][6] = cfg    # cfg
                 node["widgets_values"][4] = int(time.time()) % 1000000  # seed
         
-        # 转换为ComfyUI期望的字典格式
+        # 转换为ComfyUI期望的字典格式，过滤掉Note节点
         workflow_dict = {}
         for node in workflow["nodes"]:
+            # 跳过Note节点（注释节点）
+            if node.get("type") == "Note":
+                continue
+                
             node_id = node["id"]
             workflow_dict[str(node_id)] = {
                 "class_type": node["type"],
