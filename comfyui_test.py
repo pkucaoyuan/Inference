@@ -253,13 +253,23 @@ class ComfyUITester:
         
         # 修改采样器节点
         for node in sampler_nodes:
-            if "widgets_values" in node and len(node["widgets_values"]) >= 4:
+            if "widgets_values" in node and len(node["widgets_values"]) >= 7:
                 # widgets_values通常包含: [model, positive, negative, latent_image, seed, steps, cfg, sampler_name, scheduler, denoise]
                 node["widgets_values"][5] = steps  # steps
                 node["widgets_values"][6] = cfg    # cfg
                 node["widgets_values"][4] = int(time.time()) % 1000000  # seed
         
-        return workflow
+        # 转换为ComfyUI期望的字典格式
+        workflow_dict = {}
+        for node in workflow["nodes"]:
+            node_id = node["id"]
+            workflow_dict[str(node_id)] = {
+                "class_type": node["type"],
+                "inputs": node.get("inputs", {}),
+                "widgets_values": node.get("widgets_values", [])
+            }
+        
+        return workflow_dict
     
     def send_inference_request(self, prompt, negative_prompt="", steps=30, cfg=4.0):
         """发送推理请求"""
