@@ -58,6 +58,18 @@ python run_analysis.py
 python run_image_inference.py
 ```
 
+### 方法3: ComfyUI推理测试（Neta Lumina）
+```bash
+# 下载Neta Lumina模型到ComfyUI
+python download_neta_lumina_for_comfyui.py
+
+# 启动ComfyUI
+python start_comfyui_neta_lumina.py
+
+# 在浏览器中访问 http://localhost:8188
+# 加载工作流文件: ./Neta-Lumina/lumina_workflow.json
+```
+
 这个脚本会：
 - 自动检查依赖和模型文件
 - 运行所有模型的推理测试
@@ -340,16 +352,21 @@ organized_images/
 
 6. **Neta Lumina ComfyUI格式问题**
    ```bash
-   # 测试Neta Lumina模型（支持all-in-one格式）
+   # 方法1: 测试Neta Lumina模型（支持all-in-one格式）
    python test_neta_lumina.py
    
-   # 分析Neta Lumina模型结构
-   python neta_lumina_loader.py
+   # 方法2: 使用ComfyUI环境（推荐）
+   # 2.1 下载模型文件到ComfyUI
+   python download_neta_lumina_for_comfyui.py
    
-   # 或使用ComfyUI环境运行
-   # 1. 安装ComfyUI
-   # 2. 将模型文件放入ComfyUI/models/
-   # 3. 使用lumina_workflow.json工作流
+   # 2.2 启动ComfyUI
+   python start_comfyui_neta_lumina.py
+   
+   # 2.3 在浏览器中访问 http://localhost:8188
+   # 2.4 加载工作流文件: ./Neta-Lumina/lumina_workflow.json
+   
+   # 方法3: 分析Neta Lumina模型结构
+   python neta_lumina_loader.py
    ```
 
 7. **GPU内存记录不准确**
