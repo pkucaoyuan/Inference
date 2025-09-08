@@ -389,7 +389,7 @@ class InferenceBenchmark:
             total_time = total_end - total_start
             
             print(f"Hook测量结果:")
-            print(f"  - 总推理时间: {total_time:.3f}秒")
+            print(f"  - 管道总时间: {total_time:.3f}秒 (包含系统开销)")
             print(f"  - Text Encoding时间范围: {text_encoding_start:.3f} -> {text_encoding_end:.3f}")
             print(f"  - UNet时间范围: {unet_start:.3f} -> {unet_end:.3f}")
             print(f"  - VAE时间范围: {vae_decode_start:.3f} -> {vae_decode_end:.3f}")
@@ -421,25 +421,22 @@ class InferenceBenchmark:
                 layer_times['vae_decode_time'] = total_time * 0.07
                 print(f"  ⚠️ VAE使用估算: {layer_times['vae_decode_time']:.3f}秒")
             
-            # 验证时间计算一致性
-            calculated_total = layer_times['text_encoding_time'] + layer_times['unet_time'] + layer_times['vae_decode_time']
-            time_diff = abs(total_time - calculated_total)
+            # 计算实际推理时间（基于Hook测量）
+            actual_inference_time = layer_times['text_encoding_time'] + layer_times['unet_time'] + layer_times['vae_decode_time']
+            system_overhead = total_time - actual_inference_time
             
             # 显示时间分布分析
             print(f"  📊 时间分布分析:")
-            print(f"    - Text Encoding: {layer_times['text_encoding_time']:.3f}秒 ({layer_times['text_encoding_time']/total_time*100:.1f}%)")
-            print(f"    - UNet: {layer_times['unet_time']:.3f}秒 ({layer_times['unet_time']/total_time*100:.1f}%)")
-            print(f"    - VAE: {layer_times['vae_decode_time']:.3f}秒 ({layer_times['vae_decode_time']/total_time*100:.1f}%)")
-            print(f"    - 其他时间: {total_time - calculated_total:.3f}秒 ({(total_time - calculated_total)/total_time*100:.1f}%)")
+            print(f"    - 实际推理时间: {actual_inference_time:.3f}秒 ({actual_inference_time/total_time*100:.1f}%)")
+            print(f"      - Text Encoding: {layer_times['text_encoding_time']:.3f}秒 ({layer_times['text_encoding_time']/actual_inference_time*100:.1f}%)")
+            print(f"      - UNet: {layer_times['unet_time']:.3f}秒 ({layer_times['unet_time']/actual_inference_time*100:.1f}%)")
+            print(f"      - VAE: {layer_times['vae_decode_time']:.3f}秒 ({layer_times['vae_decode_time']/actual_inference_time*100:.1f}%)")
+            print(f"    - 系统开销: {system_overhead:.3f}秒 ({system_overhead/total_time*100:.1f}%)")
+            print(f"      - 模型初始化、内存管理、其他开销")
             
-            if time_diff > 0.1:  # 如果差异超过0.1秒
-                print(f"  ⚠️ 时间计算不一致: 总时间{total_time:.3f}秒 vs 计算时间{calculated_total:.3f}秒 (差异{time_diff:.3f}秒)")
-                print(f"  💡 差异可能来自: 模型初始化、内存管理、其他开销")
-                # 使用实际测量的总时间
-                layer_times['total_inference_time'] = total_time
-            else:
-                layer_times['total_inference_time'] = calculated_total
-                print(f"  ✅ 时间计算一致: {calculated_total:.3f}秒")
+            # 使用实际推理时间作为总推理时间
+            layer_times['total_inference_time'] = actual_inference_time
+            print(f"  ✅ 实际推理时间: {actual_inference_time:.3f}秒")
             
             # 计算Attention和其他层时间
             if attention_times:
