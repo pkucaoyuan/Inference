@@ -7,7 +7,12 @@
 - **模型配置分析**: 对比三个模型的架构参数、参数量、注意力机制等
 - **推理基准测试**: 实际测量GPU推理时间和内存消耗
 - **Neta Lumina优化分析**: 专门分析Neta Lumina相比Lumina的优化特性
+- **CFG优化技术**: LUMINA模型启用了CFG-Renormalization和CFG-Truncation优化
 - **可视化报告**: 生成详细的图表和文本报告
+
+## 技术文档
+
+- **[CFG优化配置说明](CFG_OPTIMIZATION_GUIDE.md)**: LUMINA模型CFG优化技术详解
 
 ## 文件结构
 
