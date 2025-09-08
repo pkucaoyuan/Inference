@@ -13,6 +13,7 @@
 ## 技术文档
 
 - **[CFG优化配置说明](CFG_OPTIMIZATION_GUIDE.md)**: LUMINA模型CFG优化技术详解
+- **[LUMINA推理代码详解](LUMINA_INFERENCE_CODE_GUIDE.md)**: LUMINA模型推理代码完整实现说明
 
 ## 文件结构
 
