@@ -309,15 +309,15 @@ class InferenceBenchmark:
                     vae_modules = list(pipe.vae.named_modules())
                     print(f"VAE模块数量: {len(vae_modules)}")
                     vae_hook_count = 0
+                    
+                    # 为所有VAE模块注册Hook，不限制数量
                     for name, module in vae_modules:
-                        if 'decode' in name.lower() or 'conv' in name.lower() or 'up' in name.lower():
+                        if name:  # 跳过空名称
                             hook = module.register_forward_hook(vae_hook)
                             hooks.append(hook)
                             vae_hook_count += 1
-                            if vae_hook_count <= 3:  # 只打印前3个
+                            if vae_hook_count <= 5:  # 只打印前5个
                                 print(f"  - 注册VAE Hook: {name}")
-                            if vae_hook_count >= 5:  # 注册足够的Hook
-                                break
                     
                     # 为主要的VAE组件注册Hook
                     if hasattr(pipe.vae, 'decoder'):
@@ -327,11 +327,19 @@ class InferenceBenchmark:
                         print(f"  - 注册主要VAE组件: decoder")
                     
                     if hasattr(pipe.vae, 'up_blocks'):
-                        for i, block in enumerate(pipe.vae.up_blocks[:2]):  # 只注册前2个
+                        for i, block in enumerate(pipe.vae.up_blocks):
                             hook = block.register_forward_hook(vae_hook)
                             hooks.append(hook)
                             vae_hook_count += 1
-                            print(f"  - 注册VAE Up Block: {i}")
+                            if i < 3:  # 只打印前3个
+                                print(f"  - 注册VAE Up Block: {i}")
+                    
+                    # 为VAE的根模块注册Hook
+                    hook = pipe.vae.register_forward_hook(vae_hook)
+                    hooks.append(hook)
+                    vae_hook_count += 1
+                    print(f"  - 注册VAE根模块")
+                    
                     print(f"  - 总计注册: {vae_hook_count}个VAE Hook")
                 else:
                     print("⚠️ 模型没有vae属性")
@@ -403,18 +411,18 @@ class InferenceBenchmark:
                 layer_times['vae_decode_time'] = vae_decode_end - vae_decode_start
                 print(f"  ✅ VAE实际测量: {layer_times['vae_decode_time']:.3f}秒")
             else:
-                layer_times['vae_decode_time'] = total_time * 0.07
-                print(f"  ⚠️ VAE使用估算: {layer_times['vae_decode_time']:.3f}秒")
+                # 如果VAE Hook没有捕获到时间，使用总时间减去其他时间
+                remaining_time = total_time - layer_times['text_encoding_time'] - layer_times['unet_time']
+                if remaining_time > 0:
+                    layer_times['vae_decode_time'] = remaining_time
+                    print(f"  🔧 VAE时间计算: {layer_times['vae_decode_time']:.3f}秒 (总时间减去其他时间)")
+                else:
+                    layer_times['vae_decode_time'] = total_time * 0.07
+                    print(f"  ⚠️ VAE使用估算: {layer_times['vae_decode_time']:.3f}秒")
             
             # 验证时间计算一致性
             calculated_total = layer_times['text_encoding_time'] + layer_times['unet_time'] + layer_times['vae_decode_time']
             time_diff = abs(total_time - calculated_total)
-            
-            # 如果VAE时间为0，使用总时间减去其他时间来计算VAE时间
-            if layer_times['vae_decode_time'] == 0 and total_time > calculated_total:
-                layer_times['vae_decode_time'] = total_time - layer_times['text_encoding_time'] - layer_times['unet_time']
-                print(f"  🔧 修正VAE时间: {layer_times['vae_decode_time']:.3f}秒")
-                calculated_total = layer_times['text_encoding_time'] + layer_times['unet_time'] + layer_times['vae_decode_time']
             
             if time_diff > 0.1:  # 如果差异超过0.1秒
                 print(f"  ⚠️ 时间计算不一致: 总时间{total_time:.3f}秒 vs 计算时间{calculated_total:.3f}秒 (差异{time_diff:.3f}秒)")
