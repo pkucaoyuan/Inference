@@ -377,8 +377,18 @@ class InferenceBenchmark:
             
             # 执行推理并测量时间
             print("执行推理并实际测量各层时间...")
+            
+            # 确保GPU同步，获得准确的时间测量
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+            
             total_start = time.time()
             image = pipe(**kwargs).images[0]
+            
+            # 确保GPU同步，获得准确的时间测量
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+            
             total_end = time.time()
             
             # 清理Hook
@@ -395,6 +405,15 @@ class InferenceBenchmark:
             print(f"  - VAE时间范围: {vae_decode_start:.3f} -> {vae_decode_end:.3f}")
             print(f"  - Attention调用次数: {len(attention_times)}")
             print(f"  - 其他层调用次数: {len(other_layer_times)}")
+            
+            # 分析时间间隔，找出性能瓶颈
+            if text_encoding_start > 0 and unet_start > 0:
+                text_to_unet_gap = unet_start - text_encoding_end
+                print(f"  - Text Encoding到UNet间隔: {text_to_unet_gap:.3f}秒")
+            
+            if unet_end > 0 and vae_decode_start > 0:
+                unet_to_vae_gap = vae_decode_start - unet_end
+                print(f"  - UNet到VAE间隔: {unet_to_vae_gap:.3f}秒")
             
             # 计算Text Encoding时间
             if text_encoding_start > 0 and text_encoding_end > 0:
@@ -759,8 +778,14 @@ class InferenceBenchmark:
             pipe = FluxPipeline.from_pretrained(
                 "./FLUX.1-dev",
                 torch_dtype=torch.bfloat16,
-                device_map="cuda"  # 使用cuda而不是auto
+                device_map="auto"  # 使用自动设备映射
             )
+            
+            # 预热模型，减少首次推理的延迟
+            print("预热FLUX模型...")
+            with torch.no_grad():
+                _ = pipe("warmup", height=512, width=512, num_inference_steps=1, guidance_scale=1.0)
+            print("模型预热完成")
             
             results = []
             for prompt in self.test_prompts:
@@ -793,9 +818,17 @@ class InferenceBenchmark:
             print("正在加载Lumina模型...")
             pipe = Lumina2Pipeline.from_pretrained(
                 "./Lumina-Image-2.0",
-                torch_dtype=torch.bfloat16
+                torch_dtype=torch.bfloat16,
+                device_map="auto"  # 使用自动设备映射，避免CPU卸载
             )
-            pipe.enable_model_cpu_offload()
+            # 移除CPU卸载，避免每次推理时的数据传输开销
+            # pipe.enable_model_cpu_offload()
+            
+            # 预热模型，减少首次推理的延迟
+            print("预热LUMINA模型...")
+            with torch.no_grad():
+                _ = pipe("warmup", height=512, width=512, num_inference_steps=1, guidance_scale=1.0)
+            print("模型预热完成")
             
             results = []
             for prompt in self.test_prompts:
