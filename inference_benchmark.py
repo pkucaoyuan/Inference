@@ -158,6 +158,8 @@ class InferenceBenchmark:
         """实际测量各层推理时间 - 使用Hook机制进行真实测量"""
         try:
             print("开始实际测量各层推理时间...")
+            print(f"模型类型: {type(pipe)}")
+            print(f"模型属性: {dir(pipe)}")
             
             # 初始化时间记录
             layer_times = {
@@ -223,25 +225,35 @@ class InferenceBenchmark:
                 vae_decode_end = time.time()
             
             # 注册Hook
+            print("开始注册Hook...")
             try:
                 # 注册Text Encoder Hook
+                print(f"检查text_encoder属性: {hasattr(pipe, 'text_encoder')}")
                 if hasattr(pipe, 'text_encoder'):
                     print("注册Text Encoder Hook...")
-                    for name, module in pipe.text_encoder.named_modules():
+                    text_encoder_modules = list(pipe.text_encoder.named_modules())
+                    print(f"Text Encoder模块数量: {len(text_encoder_modules)}")
+                    for name, module in text_encoder_modules:
+                        print(f"  - 检查模块: {name}")
                         if 'attention' in name.lower() or 'attn' in name.lower():
                             hook = module.register_forward_hook(text_encoder_hook)
                             hooks.append(hook)
                             print(f"  - 注册Text Encoder Attention Hook: {name}")
                             break
+                else:
+                    print("⚠️ 模型没有text_encoder属性")
                 
                 # 注册UNet Hook
+                print(f"检查unet属性: {hasattr(pipe, 'unet')}")
                 if hasattr(pipe, 'unet'):
                     print("注册UNet Hook...")
+                    unet_modules = list(pipe.unet.named_modules())
+                    print(f"UNet模块数量: {len(unet_modules)}")
                     attention_count = 0
                     other_count = 0
                     unet_count = 0
                     
-                    for name, module in pipe.unet.named_modules():
+                    for name, module in unet_modules:
                         if 'attention' in name.lower() or 'attn' in name.lower():
                             hook = module.register_forward_hook(attention_hook)
                             hooks.append(hook)
@@ -262,16 +274,23 @@ class InferenceBenchmark:
                                 print(f"  - 注册UNet Hook: {name}")
                     
                     print(f"  - 总计注册: {attention_count}个Attention, {other_count}个其他层, {unet_count}个UNet")
+                else:
+                    print("⚠️ 模型没有unet属性")
                 
                 # 注册VAE Hook
+                print(f"检查vae属性: {hasattr(pipe, 'vae')}")
                 if hasattr(pipe, 'vae'):
                     print("注册VAE Hook...")
-                    for name, module in pipe.vae.named_modules():
+                    vae_modules = list(pipe.vae.named_modules())
+                    print(f"VAE模块数量: {len(vae_modules)}")
+                    for name, module in vae_modules:
                         if 'decode' in name.lower() or 'conv' in name.lower():
                             hook = module.register_forward_hook(vae_hook)
                             hooks.append(hook)
                             print(f"  - 注册VAE Hook: {name}")
                             break
+                else:
+                    print("⚠️ 模型没有vae属性")
                 
                 print(f"总共注册了 {len(hooks)} 个Hook进行实际测量")
                 
