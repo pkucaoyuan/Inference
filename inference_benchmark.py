@@ -37,12 +37,12 @@ class InferenceBenchmark:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.results = []
         
-        # 使用时间戳创建唯一的输出目录
+        # 使用时间戳创建统一的输出目录
         timestamp = time.strftime("%Y%m%d_%H%M%S")
-        self.output_dir = Path(f"{output_dir}_{timestamp}")
+        self.output_dir = Path(f"unified_output_{timestamp}")
         self.output_dir.mkdir(exist_ok=True)
         print(f"使用设备: {self.device}")
-        print(f"输出目录: {self.output_dir}")
+        print(f"统一输出目录: {self.output_dir}")
         
         # 测试配置
         self.test_prompts = [
@@ -369,10 +369,11 @@ class InferenceBenchmark:
                     'height': size[0],
                     'width': size[1],
                     'num_inference_steps': steps,
-                    'guidance_scale': 4.0,
-                    'cfg_trunc_ratio': 1.0,
-                    'cfg_normalization': True,
-                    'max_sequence_length': 256
+                    'guidance_scale': 4.0,  # 与Neta LUMINA相同的CFG
+                    'cfg_trunc_ratio': 1.0,  # 与Neta LUMINA相同
+                    'cfg_normalization': True,  # 与Neta LUMINA相同
+                    'max_sequence_length': 256,
+                    'generator': torch.Generator("cpu").manual_seed(0)  # 添加随机种子
                 }
             
             # 执行推理并测量时间
@@ -642,10 +643,11 @@ class InferenceBenchmark:
                     'height': size[0],
                     'width': size[1],
                     'num_inference_steps': steps,
-                    'guidance_scale': 4.0,
-                    'cfg_trunc_ratio': 1.0,
-                    'cfg_normalization': True,
-                    'max_sequence_length': 256
+                    'guidance_scale': 4.0,  # 与Neta LUMINA相同的CFG
+                    'cfg_trunc_ratio': 1.0,  # 与Neta LUMINA相同
+                    'cfg_normalization': True,  # 与Neta LUMINA相同
+                    'max_sequence_length': 256,
+                    'generator': torch.Generator("cpu").manual_seed(0)  # 添加随机种子
                 }
             
             # 实际测量推理时间
@@ -821,6 +823,12 @@ class InferenceBenchmark:
                 torch_dtype=torch.bfloat16,
                 device_map="cuda"  # 直接使用CUDA设备，避免CPU卸载
             )
+            
+            # 修改为与Neta LUMINA相同的配置
+            from diffusers import FlowMatchEulerDiscreteScheduler
+            # 使用linear_quadratic调度器（类似Neta LUMINA）
+            pipe.scheduler = FlowMatchEulerDiscreteScheduler.from_config(pipe.scheduler.config)
+            print("已配置为与Neta LUMINA相同的调度器")
             # 移除CPU卸载，避免每次推理时的数据传输开销
             # pipe.enable_model_cpu_offload()
             
@@ -913,8 +921,9 @@ class InferenceBenchmark:
         """生成基准测试报告"""
         print("生成基准测试报告...")
         
-        # 创建报告目录
-        report_dir = Path("benchmark_report")
+        # 创建带时间戳的报告目录
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        report_dir = Path(f"benchmark_report_{timestamp}")
         report_dir.mkdir(exist_ok=True)
         
         # 生成文本报告

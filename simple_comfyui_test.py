@@ -28,11 +28,11 @@ class SimpleComfyUITester:
         self.gpu_id = gpu_id  # 指定使用的GPU ID
         self.results = []
         
-        # 创建输出目录
+        # 创建统一的输出目录
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.output_dir = Path(f"neta_lumina_output_{timestamp}")
+        self.output_dir = Path(f"unified_output_{timestamp}")
         self.output_dir.mkdir(exist_ok=True)
-        print(f"输出目录: {self.output_dir}")
+        print(f"统一输出目录: {self.output_dir}")
         print(f"监控GPU ID: {self.gpu_id}")
         
     def get_gpu_memory(self):
@@ -77,12 +77,12 @@ class SimpleComfyUITester:
         
         return 0.0
     
-    def save_image(self, image_data, prompt, steps, cfg, test_index):
+    def save_image(self, image_data, prompt, steps, cfg, test_index, size=(1024, 1024)):
         """保存生成的图片"""
         try:
-            # 创建安全的文件名
+            # 创建安全的文件名，保存到统一目录
             safe_prompt = "".join(c for c in prompt[:30] if c.isalnum() or c in (' ', '-', '_')).rstrip()
-            filename = f"neta_lumina_test{test_index}_{steps}steps_cfg{cfg}_{safe_prompt}.png"
+            filename = f"neta_lumina_{size[0]}x{size[1]}_steps_{steps}_cfg_{cfg}_{safe_prompt}.png"
             filepath = self.output_dir / filename
             
             # 保存图片
