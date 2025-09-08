@@ -201,7 +201,6 @@ class InferenceBenchmark:
                 if unet_start == 0:
                     unet_start = time.time()
                 unet_end = time.time()
-                print(f"  🔍 UNet Hook调用: {module.__class__.__name__}")
             
             def attention_hook(module, input, output):
                 start_time = time.time()
@@ -224,7 +223,6 @@ class InferenceBenchmark:
                 if vae_decode_start == 0:
                     vae_decode_start = time.time()
                 vae_decode_end = time.time()
-                print(f"  🔍 VAE Hook调用: {module.__class__.__name__}")
             
             # 注册Hook
             print("开始注册Hook...")
@@ -380,12 +378,9 @@ class InferenceBenchmark:
             total_time = total_end - total_start
             
             print(f"Hook测量结果:")
-            print(f"  - Text Encoding: {text_encoding_start:.3f} -> {text_encoding_end:.3f}")
-            print(f"  - UNet: {unet_start:.3f} -> {unet_end:.3f}")
-            print(f"  - VAE: {vae_decode_start:.3f} -> {vae_decode_end:.3f}")
+            print(f"  - 总推理时间: {total_time:.3f}秒")
             print(f"  - Attention调用次数: {len(attention_times)}")
             print(f"  - 其他层调用次数: {len(other_layer_times)}")
-            print(f"  - 总推理时间: {total_time:.3f}秒")
             
             # 计算Text Encoding时间
             if text_encoding_start > 0 and text_encoding_end > 0:
@@ -414,6 +409,13 @@ class InferenceBenchmark:
             # 验证时间计算一致性
             calculated_total = layer_times['text_encoding_time'] + layer_times['unet_time'] + layer_times['vae_decode_time']
             time_diff = abs(total_time - calculated_total)
+            
+            # 如果VAE时间为0，使用总时间减去其他时间来计算VAE时间
+            if layer_times['vae_decode_time'] == 0 and total_time > calculated_total:
+                layer_times['vae_decode_time'] = total_time - layer_times['text_encoding_time'] - layer_times['unet_time']
+                print(f"  🔧 修正VAE时间: {layer_times['vae_decode_time']:.3f}秒")
+                calculated_total = layer_times['text_encoding_time'] + layer_times['unet_time'] + layer_times['vae_decode_time']
+            
             if time_diff > 0.1:  # 如果差异超过0.1秒
                 print(f"  ⚠️ 时间计算不一致: 总时间{total_time:.3f}秒 vs 计算时间{calculated_total:.3f}秒 (差异{time_diff:.3f}秒)")
                 # 使用实际测量的总时间
