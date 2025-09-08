@@ -220,9 +220,23 @@ class SimpleComfyUITester:
                         print(f"队列状态: {current_queue_status}")
                         last_queue_status = current_queue_status
                     
+                    # 如果队列为空，等待一下再确认推理是否真的完成
                     if not queue_pending and not queue_running:
-                        print("✅ 推理完成！")
-                        break
+                        print("队列为空，等待确认推理完成...")
+                        time.sleep(2)  # 等待2秒确认
+                        
+                        # 再次检查队列状态
+                        confirm_response = requests.get(f"{self.comfyui_url}/queue")
+                        if confirm_response.status_code == 200:
+                            confirm_data = confirm_response.json()
+                            confirm_pending = confirm_data.get('queue_pending', [])
+                            confirm_running = confirm_data.get('queue_running', [])
+                            
+                            if not confirm_pending and not confirm_running:
+                                print("✅ 推理完成！")
+                                break
+                            else:
+                                print("推理仍在进行中，继续等待...")
                     
                     # 尝试获取更详细的进度信息
                     try:
@@ -615,9 +629,13 @@ class SimpleComfyUITester:
         if not self.send_inference_request(prompt, negative_prompt, steps, cfg):
             return None
         
-        # 监控推理进度
-        completion_time = time.time()
+        # 监控推理进度并等待完成
+        print("等待推理完成...")
+        print(f"开始监控时间: {time.strftime('%H:%M:%S')}")
         progress_data = self.monitor_inference_progress()
+        completion_time = time.time()  # 在推理真正完成后记录时间
+        print(f"完成监控时间: {time.strftime('%H:%M:%S')}")
+        print(f"监控耗时: {completion_time - request_time:.2f}秒")
         
         # 暂时跳过图片获取，专注于性能数据
         image_data = None
