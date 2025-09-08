@@ -824,17 +824,10 @@ class InferenceBenchmark:
                 device_map="cuda"  # 直接使用CUDA设备，避免CPU卸载
             )
             
-            # 修改为与Neta LUMINA相同的配置
-            from diffusers import DPMSolverMultistepScheduler
-            # 使用linear_quadratic调度器（对应DPMSolverMultistepScheduler）
-            # 配置为res_multistep采样器（通过scheduler实现）
-            pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
-            # 设置采样器算法为DPM++ 2M（对应res_multistep）
-            pipe.scheduler.config.algorithm_type = "dpmsolver++"
-            pipe.scheduler.config.solver_order = 2
-            print("已配置为与Neta LUMINA相同的调度器和采样器:")
-            print("  - 调度器: DPMSolverMultistepScheduler (linear_quadratic)")
-            print("  - 采样器: DPM++ 2M (res_multistep)")
+            # 使用LUMINA的原始配置
+            print("使用LUMINA原始配置:")
+            print("  - 调度器: FlowMatchEulerDiscreteScheduler")
+            print("  - 采样器: Euler")
             # 移除CPU卸载，避免每次推理时的数据传输开销
             # pipe.enable_model_cpu_offload()
             
