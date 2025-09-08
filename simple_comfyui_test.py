@@ -189,6 +189,9 @@ class SimpleComfyUITester:
         print("开始监控推理进度...")
         
         start_time = time.time()
+        inference_start_time = None  # 推理真正开始的时间
+        inference_end_time = None    # 推理真正结束的时间
+        
         progress_data = {
             'text_encoding_start': None,
             'text_encoding_end': None,
@@ -200,7 +203,9 @@ class SimpleComfyUITester:
             'current_step': 0,
             'step_times': [],
             'attention_times': [],
-            'layer_times': {}
+            'layer_times': {},
+            'inference_start_time': None,
+            'inference_end_time': None
         }
         
         last_queue_status = None
@@ -228,6 +233,12 @@ class SimpleComfyUITester:
                     
                     # 如果队列为空，等待一下再确认推理是否真的完成
                     if not queue_pending and not queue_running:
+                        if inference_start_time is None:
+                            # 第一次检测到队列为空，记录推理开始时间
+                            inference_start_time = time.time()
+                            progress_data['inference_start_time'] = inference_start_time
+                            print(f"推理开始时间: {time.strftime('%H:%M:%S')}")
+                        
                         print("队列为空，等待确认推理完成...")
                         time.sleep(5)  # 等待5秒确认
                         
@@ -248,7 +259,12 @@ class SimpleComfyUITester:
                                             latest_execution = max(history.keys(), key=lambda x: history[x].get('timestamp', 0))
                                             execution_info = history[latest_execution]
                                             if execution_info.get('status', {}).get('status_str') == 'success':
-                                                print("✅ 推理成功完成！")
+                                                inference_end_time = time.time()
+                                                progress_data['inference_end_time'] = inference_end_time
+                                                print(f"✅ 推理成功完成！推理结束时间: {time.strftime('%H:%M:%S')}")
+                                                if inference_start_time:
+                                                    actual_inference_time = inference_end_time - inference_start_time
+                                                    print(f"实际推理时间: {actual_inference_time:.2f}秒")
                                                 break
                                             else:
                                                 print("⚠️ 推理状态未确认，继续等待...")
@@ -678,9 +694,18 @@ class SimpleComfyUITester:
         end_system_memory = self.get_system_memory()
         
         # 计算各部分时间
-        total_inference_time = end_time - start_time
-        request_time_taken = completion_time - request_time
-        processing_time = end_time - completion_time
+        # 使用监控函数返回的准确推理时间
+        if progress_data and progress_data.get('inference_start_time') and progress_data.get('inference_end_time'):
+            actual_inference_time = progress_data['inference_end_time'] - progress_data['inference_start_time']
+            print(f"使用监控函数测量的推理时间: {actual_inference_time:.2f}秒")
+        else:
+            # 回退到传统方法
+            actual_inference_time = completion_time - request_time
+            print(f"使用传统方法测量的推理时间: {actual_inference_time:.2f}秒")
+        
+        total_inference_time = actual_inference_time  # 使用实际推理时间
+        request_time_taken = 0.0  # ComfyUI请求时间很短，可以忽略
+        processing_time = end_time - completion_time  # 图片获取等后处理时间
         
         # 计算统计信息
         gpu_memory_used = end_gpu_memory  # 使用实际使用的内存，而不是变化量
