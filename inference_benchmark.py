@@ -94,6 +94,10 @@ class InferenceBenchmark:
         # 记录开始状态
         start_time = time.time()
         start_memory = self._get_gpu_memory_nvidia_smi()
+        if start_memory == 0.0:
+            # 如果nvidia-smi失败，使用PyTorch的CUDA内存监控
+            start_memory = self._get_gpu_memory()
+            print(f"🔍 使用PyTorch CUDA内存监控: {start_memory:.2f}GB")
         
         try:
             # 执行推理 - 使用官方推荐参数
@@ -131,24 +135,29 @@ class InferenceBenchmark:
             # 记录结束状态
             end_time = time.time()
             end_memory = self._get_gpu_memory_nvidia_smi()
+            if end_memory == 0.0:
+                # 如果nvidia-smi失败，使用PyTorch的CUDA内存监控
+                end_memory = self._get_gpu_memory()
+                print(f"🔍 使用PyTorch CUDA内存监控: {end_memory:.2f}GB")
             
             return {
                 'prompt': prompt,
                 'size': size,
                 'steps': steps,
                 'inference_time': end_time - start_time,
-                'gpu_memory': end_memory - start_memory,
+                'gpu_memory': end_memory,  # 使用实际使用的内存，而不是变化量
                 'success': True
             }
             
         except Exception as e:
             end_time = time.time()
+            end_memory = self._get_gpu_memory_nvidia_smi()
             return {
                 'prompt': prompt,
                 'size': size,
                 'steps': steps,
                 'inference_time': end_time - start_time,
-                'gpu_memory': 0,
+                'gpu_memory': end_memory,  # 记录实际使用的内存
                 'success': False,
                 'error': str(e)
             }
@@ -244,9 +253,13 @@ class InferenceBenchmark:
                                   capture_output=True, text=True)
             if result.returncode == 0:
                 memory_mb = float(result.stdout.strip())
-                return memory_mb / 1024.0  # 转换为GB
-        except Exception:
-            pass
+                memory_gb = memory_mb / 1024.0  # 转换为GB
+                print(f"🔍 GPU内存监控: {memory_mb:.0f}MB ({memory_gb:.2f}GB)")
+                return memory_gb
+            else:
+                print(f"⚠️ nvidia-smi命令失败: {result.stderr}")
+        except Exception as e:
+            print(f"⚠️ GPU内存监控异常: {e}")
         return 0.0
     
     def run_all_benchmarks(self):
