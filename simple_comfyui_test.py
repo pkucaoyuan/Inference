@@ -220,10 +220,16 @@ class SimpleComfyUITester:
                         print(f"队列状态: {current_queue_status}")
                         last_queue_status = current_queue_status
                     
+                    # 调试信息：显示队列详情
+                    if queue_pending:
+                        print(f"🔍 等待队列详情: {queue_pending}")
+                    if queue_running:
+                        print(f"🔍 运行队列详情: {queue_running}")
+                    
                     # 如果队列为空，等待一下再确认推理是否真的完成
                     if not queue_pending and not queue_running:
                         print("队列为空，等待确认推理完成...")
-                        time.sleep(2)  # 等待2秒确认
+                        time.sleep(5)  # 等待5秒确认
                         
                         # 再次检查队列状态
                         confirm_response = requests.get(f"{self.comfyui_url}/queue")
@@ -233,10 +239,34 @@ class SimpleComfyUITester:
                             confirm_running = confirm_data.get('queue_running', [])
                             
                             if not confirm_pending and not confirm_running:
-                                print("✅ 推理完成！")
-                                break
+                                # 额外检查：确保历史记录中有成功的执行
+                                try:
+                                    history_response = requests.get(f"{self.comfyui_url}/history")
+                                    if history_response.status_code == 200:
+                                        history = history_response.json()
+                                        if history:
+                                            latest_execution = max(history.keys(), key=lambda x: history[x].get('timestamp', 0))
+                                            execution_info = history[latest_execution]
+                                            if execution_info.get('status', {}).get('status_str') == 'success':
+                                                print("✅ 推理成功完成！")
+                                                break
+                                            else:
+                                                print("⚠️ 推理状态未确认，继续等待...")
+                                                continue
+                                        else:
+                                            print("⚠️ 历史记录为空，继续等待...")
+                                            continue
+                                    else:
+                                        print("⚠️ 无法获取历史记录，继续等待...")
+                                        continue
+                                except Exception as e:
+                                    print(f"⚠️ 检查历史记录失败: {e}，继续等待...")
+                                    continue
                             else:
-                                print("推理仍在进行中，继续等待...")
+                                print(f"推理仍在进行中，继续等待... (等待中: {len(confirm_pending)}, 运行中: {len(confirm_running)})")
+                    else:
+                        # 如果队列不为空，继续等待
+                        print(f"推理进行中... (等待中: {len(queue_pending)}, 运行中: {len(queue_running)})")
                     
                     # 尝试获取更详细的进度信息
                     try:
