@@ -184,6 +184,82 @@ class SimpleComfyUITester:
         
         return {}
     
+    def estimate_layer_times_from_comfyui(self, node_times, total_inference_time):
+        """基于ComfyUI节点时间估算各层时间"""
+        layer_times = {}
+        
+        if not node_times:
+            # 如果没有节点时间，使用传统估算
+            layer_times['text_encoding_time'] = total_inference_time * 0.08
+            layer_times['unet_time'] = total_inference_time * 0.85
+            layer_times['vae_decode_time'] = total_inference_time * 0.07
+            layer_times['attention_time'] = layer_times['unet_time'] * 0.3
+            layer_times['other_layers_time'] = layer_times['unet_time'] * 0.7
+            print("使用传统估算方法")
+            return layer_times
+        
+        # 尝试从节点时间中提取各层时间
+        text_encoding_time = 0
+        unet_time = 0
+        vae_decode_time = 0
+        
+        # 查找Text Encoder相关节点
+        for node_id, node_time in node_times.items():
+            if 'text' in str(node_id).lower() or 'clip' in str(node_id).lower():
+                text_encoding_time += node_time
+            elif 'sampler' in str(node_id).lower() or 'unet' in str(node_id).lower():
+                unet_time += node_time
+            elif 'vae' in str(node_id).lower() or 'decode' in str(node_id).lower():
+                vae_decode_time += node_time
+        
+        # 如果找到了节点时间，使用它们
+        if text_encoding_time > 0 or unet_time > 0 or vae_decode_time > 0:
+            layer_times['text_encoding_time'] = text_encoding_time
+            layer_times['unet_time'] = unet_time
+            layer_times['vae_decode_time'] = vae_decode_time
+            layer_times['attention_time'] = unet_time * 0.3  # 估算attention时间
+            layer_times['other_layers_time'] = unet_time * 0.7  # 估算其他层时间
+            print(f"✅ 使用ComfyUI节点时间: Text={text_encoding_time:.2f}s, UNet={unet_time:.2f}s, VAE={vae_decode_time:.2f}s")
+        else:
+            # 回退到传统估算
+            layer_times['text_encoding_time'] = total_inference_time * 0.08
+            layer_times['unet_time'] = total_inference_time * 0.85
+            layer_times['vae_decode_time'] = total_inference_time * 0.07
+            layer_times['attention_time'] = layer_times['unet_time'] * 0.3
+            layer_times['other_layers_time'] = layer_times['unet_time'] * 0.7
+            print("⚠️ 节点时间解析失败，使用传统估算")
+        
+        return layer_times
+    
+    def get_comfyui_node_times(self):
+        """尝试通过ComfyUI API获取节点执行时间"""
+        try:
+            # 尝试获取执行历史，可能包含节点执行时间
+            response = requests.get(f"{self.comfyui_url}/history", timeout=5)
+            if response.status_code == 200:
+                history = response.json()
+                if history:
+                    latest_execution = max(history.keys(), key=lambda x: history[x].get('timestamp', 0))
+                    execution_info = history[latest_execution]
+                    
+                    # 尝试从执行信息中提取节点时间
+                    node_times = {}
+                    if 'status' in execution_info:
+                        status = execution_info['status']
+                        if 'status_str' in status and status['status_str'] == 'success':
+                            # 尝试获取节点执行时间
+                            if 'exec_info' in status:
+                                exec_info = status['exec_info']
+                                if 'node_times' in exec_info:
+                                    node_times = exec_info['node_times']
+                                    print(f"🔍 获取到ComfyUI节点时间: {node_times}")
+                    
+                    return node_times
+        except Exception as e:
+            print(f"获取ComfyUI节点时间失败: {e}")
+        
+        return {}
+    
     def monitor_inference_progress(self, timeout=300):
         """监控推理进度并记录详细时间"""
         print("开始监控推理进度...")
@@ -191,6 +267,14 @@ class SimpleComfyUITester:
         start_time = time.time()
         inference_start_time = None  # 推理真正开始的时间
         inference_end_time = None    # 推理真正结束的时间
+        
+        # 尝试通过ComfyUI API获取更详细的时间信息
+        text_encoding_start = None
+        text_encoding_end = None
+        unet_start = None
+        unet_end = None
+        vae_decode_start = None
+        vae_decode_end = None
         
         progress_data = {
             'text_encoding_start': None,
@@ -205,7 +289,8 @@ class SimpleComfyUITester:
             'attention_times': [],
             'layer_times': {},
             'inference_start_time': None,
-            'inference_end_time': None
+            'inference_end_time': None,
+            'comfyui_node_times': {}  # ComfyUI节点执行时间
         }
         
         last_queue_status = None
@@ -265,6 +350,16 @@ class SimpleComfyUITester:
                                                 if inference_start_time:
                                                     actual_inference_time = inference_end_time - inference_start_time
                                                     print(f"实际推理时间: {actual_inference_time:.2f}秒")
+                                                
+                                                # 尝试获取ComfyUI节点执行时间
+                                                print("尝试获取ComfyUI节点执行时间...")
+                                                node_times = self.get_comfyui_node_times()
+                                                if node_times:
+                                                    progress_data['comfyui_node_times'] = node_times
+                                                    print(f"✅ 获取到节点执行时间: {node_times}")
+                                                else:
+                                                    print("⚠️ 无法获取节点执行时间，使用估算")
+                                                
                                                 break
                                             else:
                                                 print("⚠️ 推理状态未确认，继续等待...")
@@ -707,6 +802,24 @@ class SimpleComfyUITester:
         request_time_taken = 0.0  # ComfyUI请求时间很短，可以忽略
         processing_time = end_time - completion_time  # 图片获取等后处理时间
         
+        # 尝试估算各层时间
+        print("尝试估算各层推理时间...")
+        if progress_data and 'comfyui_node_times' in progress_data:
+            layer_times = self.estimate_layer_times_from_comfyui(
+                progress_data['comfyui_node_times'], 
+                actual_inference_time
+            )
+        else:
+            # 使用传统估算
+            layer_times = self.estimate_layer_times_from_comfyui({}, actual_inference_time)
+        
+        print(f"各层时间估算:")
+        print(f"  - Text Encoding: {layer_times['text_encoding_time']:.2f}秒")
+        print(f"  - UNet: {layer_times['unet_time']:.2f}秒")
+        print(f"  - VAE Decode: {layer_times['vae_decode_time']:.2f}秒")
+        print(f"  - Attention: {layer_times['attention_time']:.2f}秒")
+        print(f"  - 其他层: {layer_times['other_layers_time']:.2f}秒")
+        
         # 计算统计信息
         gpu_memory_used = end_gpu_memory  # 使用实际使用的内存，而不是变化量
         system_memory_used = end_system_memory - start_system_memory
@@ -740,6 +853,13 @@ class SimpleComfyUITester:
             'gpu_details_start': start_detailed_gpu,
             'gpu_details_end': end_detailed_gpu,
             'progress_data': progress_data,
+            'layer_times': layer_times,
+            'text_encoding_time': layer_times['text_encoding_time'],
+            'unet_time': layer_times['unet_time'],
+            'vae_decode_time': layer_times['vae_decode_time'],
+            'total_attention_time': layer_times['attention_time'],
+            'avg_attention_time_per_step': layer_times['attention_time'] / max(steps, 1),
+            'other_layers_time': layer_times['other_layers_time'],
             'gpu_id': self.gpu_id,
             'timestamp': datetime.now().isoformat()
         }
