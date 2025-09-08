@@ -102,7 +102,7 @@ def main():
     benchmark = InferenceBenchmark()
     
     # 运行测试
-    results = benchmark.run_benchmark()
+    results = benchmark.run_all_benchmarks()
     
     if results:
         print(f"\n✅ 测试完成，共生成 {len(results)} 个结果")
