@@ -28,7 +28,16 @@ class FluxInferenceTester:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.output_dir = Path(f"flux_output_{timestamp}")
         self.output_dir.mkdir(exist_ok=True)
+        
+        # 创建子目录
+        self.images_dir = self.output_dir / "images"
+        self.results_dir = self.output_dir / "results"
+        self.images_dir.mkdir(exist_ok=True)
+        self.results_dir.mkdir(exist_ok=True)
+        
         print(f"输出目录: {self.output_dir}")
+        print(f"图片目录: {self.images_dir}")
+        print(f"结果目录: {self.results_dir}")
         print(f"使用GPU ID: {self.gpu_id}")
         print(f"设备: {self.device}")
         
@@ -197,10 +206,11 @@ class FluxInferenceTester:
             inference_end = time.time()
             inference_time = inference_end - inference_start
             
-            # 保存图片
+            # 保存图片到时间戳文件夹
             safe_prompt = "".join(c for c in prompt[:30] if c.isalnum() or c in (' ', '-', '_')).rstrip()
-            filename = f"flux_{width}x{height}_steps_{steps}_cfg_{cfg}_{safe_prompt}.png"
-            image_path = self.output_dir / filename
+            timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"flux_{width}x{height}_steps_{steps}_cfg_{cfg}_{safe_prompt}_{timestamp_str}.png"
+            image_path = self.images_dir / filename
             image.save(image_path)
             print(f"✅ 图片已保存: {image_path}")
             
@@ -311,7 +321,7 @@ class FluxInferenceTester:
         return self.results
     
     def save_results(self, filename=None):
-        """保存测试结果"""
+        """保存测试结果到时间戳文件夹"""
         if not self.results:
             print("没有测试结果可保存")
             return None
@@ -320,11 +330,174 @@ class FluxInferenceTester:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"flux_inference_results_{timestamp}.json"
         
-        with open(filename, 'w', encoding='utf-8') as f:
+        # 保存到results子目录
+        results_path = self.results_dir / filename
+        with open(results_path, 'w', encoding='utf-8') as f:
             json.dump(self.results, f, indent=2, ensure_ascii=False)
         
-        print(f"✅ 测试结果已保存: {filename}")
-        return filename
+        print(f"✅ 测试结果已保存: {results_path}")
+        return str(results_path)
+    
+    def organize_images(self):
+        """整理生成的图片"""
+        if not self.images_dir.exists():
+            print("图片目录不存在")
+            return
+        
+        # 统计图片信息
+        image_files = list(self.images_dir.glob("*.png"))
+        if not image_files:
+            print("没有找到生成的图片")
+            return
+        
+        print(f"\n图片整理总结:")
+        print(f"总图片数量: {len(image_files)}")
+        print(f"图片目录: {self.images_dir}")
+        
+        # 按尺寸分组统计
+        size_stats = {}
+        for img_file in image_files:
+            # 从文件名解析尺寸信息
+            filename = img_file.stem
+            if "_" in filename:
+                parts = filename.split("_")
+                for part in parts:
+                    if "x" in part and part.replace("x", "").isdigit():
+                        size = part
+                        size_stats[size] = size_stats.get(size, 0) + 1
+                        break
+        
+        if size_stats:
+            print(f"尺寸分布: {size_stats}")
+        
+        # 创建HTML画廊
+        self.create_html_gallery(image_files)
+    
+    def create_html_gallery(self, image_files):
+        """创建HTML图片画廊"""
+        html_content = """
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLUX推理结果画廊</title>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }}
+        .header {{
+            text-align: center;
+            margin-bottom: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }}
+        .gallery {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }}
+        .image-card {{
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }}
+        .image-card:hover {{
+            transform: translateY(-5px);
+        }}
+        .image-card img {{
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+        }}
+        .image-info {{
+            padding: 15px;
+        }}
+        .image-title {{
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }}
+        .image-details {{
+            font-size: 14px;
+            color: #666;
+        }}
+        .stats {{
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>FLUX推理结果画廊</h1>
+        <p>生成时间: {timestamp}</p>
+        <p>总图片数量: {total_images}</p>
+    </div>
+    
+    <div class="gallery">
+        {image_cards}
+    </div>
+    
+    <div class="stats">
+        <h3>统计信息</h3>
+        <p>总图片数量: {total_images}</p>
+        <p>生成时间: {timestamp}</p>
+    </div>
+</body>
+</html>
+        """
+        
+        # 生成图片卡片
+        image_cards = ""
+        for img_file in image_files:
+            filename = img_file.name
+            # 从文件名解析信息
+            parts = filename.replace(".png", "").split("_")
+            size = "未知"
+            steps = "未知"
+            cfg = "未知"
+            
+            for part in parts:
+                if "x" in part and part.replace("x", "").isdigit():
+                    size = part
+                elif part.startswith("steps"):
+                    steps = part.replace("steps", "")
+                elif part.startswith("cfg"):
+                    cfg = part.replace("cfg", "")
+            
+            image_cards += f"""
+            <div class="image-card">
+                <img src="{img_file.name}" alt="{filename}">
+                <div class="image-info">
+                    <div class="image-title">{filename}</div>
+                    <div class="image-details">尺寸: {size} | 步数: {steps} | CFG: {cfg}</div>
+                </div>
+            </div>
+            """
+        
+        # 填充HTML模板
+        html_filled = html_content.format(
+            timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            total_images=len(image_files),
+            image_cards=image_cards
+        )
+        
+        # 保存HTML文件
+        html_path = self.output_dir / "gallery.html"
+        with open(html_path, 'w', encoding='utf-8') as f:
+            f.write(html_filled)
+        
+        print(f"✅ HTML画廊已生成: {html_path}")
     
     def print_summary(self):
         """打印测试总结"""
@@ -400,6 +573,7 @@ def main():
         results = tester.run_batch_tests()
         tester.print_summary()
         tester.save_results()
+        tester.organize_images()
     else:
         # 单次测试
         result = tester.run_inference_test(
@@ -414,6 +588,7 @@ def main():
             tester.results.append(result)
             tester.print_summary()
             tester.save_results()
+            tester.organize_images()
 
 if __name__ == "__main__":
     main()
