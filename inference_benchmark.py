@@ -201,6 +201,7 @@ class InferenceBenchmark:
                 if unet_start == 0:
                     unet_start = time.time()
                 unet_end = time.time()
+                print(f"  🔍 UNet Hook调用: {module.__class__.__name__}")
             
             def attention_hook(module, input, output):
                 start_time = time.time()
@@ -223,6 +224,7 @@ class InferenceBenchmark:
                 if vae_decode_start == 0:
                     vae_decode_start = time.time()
                 vae_decode_end = time.time()
+                print(f"  🔍 VAE Hook调用: {module.__class__.__name__}")
             
             # 注册Hook
             print("开始注册Hook...")
@@ -276,12 +278,27 @@ class InferenceBenchmark:
                             other_count += 1
                             if other_count <= 3:  # 只打印前3个
                                 print(f"  - 注册其他层Hook: {name}")
-                        elif 'down' in name.lower() or 'up' in name.lower() or 'mid' in name.lower() or 'block' in name.lower():
+                        elif 'down' in name.lower() or 'up' in name.lower() or 'mid' in name.lower() or 'block' in name.lower() or 'noise_refiner' in name.lower():
                             hook = module.register_forward_hook(unet_hook)
                             hooks.append(hook)
                             unet_count += 1
                             if unet_count <= 3:  # 只打印前3个
                                 print(f"  - 注册UNet/Transformer Hook: {name}")
+                    
+                    # 为主要的UNet/Transformer组件注册Hook
+                    if hasattr(unet_module, 'noise_refiner'):
+                        hook = unet_module.noise_refiner.register_forward_hook(unet_hook)
+                        hooks.append(hook)
+                        unet_count += 1
+                        print(f"  - 注册主要UNet组件: noise_refiner")
+                    
+                    # 为主要的Transformer组件注册Hook
+                    if hasattr(unet_module, 'transformer_blocks'):
+                        for i, block in enumerate(unet_module.transformer_blocks[:3]):  # 只注册前3个
+                            hook = block.register_forward_hook(unet_hook)
+                            hooks.append(hook)
+                            unet_count += 1
+                            print(f"  - 注册Transformer Block: {i}")
                     
                     print(f"  - 总计注册: {attention_count}个Attention, {other_count}个其他层, {unet_count}个UNet/Transformer")
                 else:
@@ -303,6 +320,20 @@ class InferenceBenchmark:
                                 print(f"  - 注册VAE Hook: {name}")
                             if vae_hook_count >= 5:  # 注册足够的Hook
                                 break
+                    
+                    # 为主要的VAE组件注册Hook
+                    if hasattr(pipe.vae, 'decoder'):
+                        hook = pipe.vae.decoder.register_forward_hook(vae_hook)
+                        hooks.append(hook)
+                        vae_hook_count += 1
+                        print(f"  - 注册主要VAE组件: decoder")
+                    
+                    if hasattr(pipe.vae, 'up_blocks'):
+                        for i, block in enumerate(pipe.vae.up_blocks[:2]):  # 只注册前2个
+                            hook = block.register_forward_hook(vae_hook)
+                            hooks.append(hook)
+                            vae_hook_count += 1
+                            print(f"  - 注册VAE Up Block: {i}")
                     print(f"  - 总计注册: {vae_hook_count}个VAE Hook")
                 else:
                     print("⚠️ 模型没有vae属性")
@@ -990,17 +1021,24 @@ class InferenceBenchmark:
         """生成JSON数据"""
         json_path = report_dir / "benchmark_data.json"
         
-        # 创建可序列化的结果副本，移除PIL Image对象
-        serializable_results = []
-        for result in self.results:
-            serializable_result = result.copy()
-            # 移除PIL Image对象
-            if 'image' in serializable_result:
-                del serializable_result['image']
-            # 移除layer_times中的image
-            if 'layer_times' in serializable_result and 'image' in serializable_result['layer_times']:
-                del serializable_result['layer_times']['image']
-            serializable_results.append(serializable_result)
+        # 递归清理PIL Image对象
+        def clean_for_json(obj):
+            if isinstance(obj, dict):
+                cleaned = {}
+                for key, value in obj.items():
+                    if key == 'image' or (isinstance(value, dict) and 'image' in value):
+                        continue  # 跳过image字段
+                    cleaned[key] = clean_for_json(value)
+                return cleaned
+            elif isinstance(obj, list):
+                return [clean_for_json(item) for item in obj]
+            elif hasattr(obj, '__class__') and 'Image' in str(obj.__class__):
+                return None  # 移除PIL Image对象
+            else:
+                return obj
+        
+        # 创建可序列化的结果副本
+        serializable_results = clean_for_json(self.results)
         
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(serializable_results, f, indent=2, ensure_ascii=False)
