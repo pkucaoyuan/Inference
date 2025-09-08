@@ -95,12 +95,11 @@ class InferenceBenchmark:
         start_time = time.time()
         
         try:
-            # 记录推理开始时间
-            inference_start_time = time.time()
-            
             # 执行推理 - 使用官方推荐参数
             if model_name == "FLUX":
                 # FLUX官方示例参数
+                print("开始FLUX推理...")
+                inference_start_time = time.time()
                 image = pipe(
                     prompt,
                     height=size[0],
@@ -110,8 +109,11 @@ class InferenceBenchmark:
                     max_sequence_length=512,
                     generator=torch.Generator("cpu").manual_seed(0)
                 ).images[0]
+                inference_end_time = time.time()
             elif model_name == "Lumina":
                 # Lumina官方默认参数
+                print("开始Lumina推理...")
+                inference_start_time = time.time()
                 image = pipe(
                     prompt,
                     height=size[0],
@@ -122,10 +124,11 @@ class InferenceBenchmark:
                     cfg_normalization=True,
                     max_sequence_length=256
                 ).images[0]
+                inference_end_time = time.time()
             
-            # 记录推理结束时间
-            inference_end_time = time.time()
+            # 计算推理时间
             inference_time = inference_end_time - inference_start_time
+            print(f"推理完成，耗时: {inference_time:.2f}秒")
             
             # 保存生成的图片
             save_start_time = time.time()
@@ -155,6 +158,7 @@ class InferenceBenchmark:
             
         except Exception as e:
             end_time = time.time()
+            print(f"推理失败: {e}")
             return {
                 'prompt': prompt,
                 'size': size,
