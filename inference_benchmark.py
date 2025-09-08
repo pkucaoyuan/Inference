@@ -100,6 +100,9 @@ class InferenceBenchmark:
             print(f"🔍 使用PyTorch CUDA内存监控: {start_memory:.2f}GB")
         
         try:
+            # 记录推理开始时间
+            inference_start_time = time.time()
+            
             # 执行推理 - 使用官方推荐参数
             if model_name == "FLUX":
                 # FLUX官方示例参数
@@ -125,12 +128,18 @@ class InferenceBenchmark:
                     max_sequence_length=256
                 ).images[0]
             
+            # 记录推理结束时间
+            inference_end_time = time.time()
+            inference_time = inference_end_time - inference_start_time
+            
             # 保存生成的图片
+            save_start_time = time.time()
             safe_prompt = "".join(c for c in prompt[:30] if c.isalnum() or c in (' ', '-', '_')).rstrip()
             filename = f"{model_name.lower().replace(' ', '_')}_{size[0]}x{size[1]}_steps_{steps}_cfg_{3.5 if model_name == 'FLUX' else 4.0 if model_name == 'Lumina' else 4.5}_{safe_prompt}.png"
             image_path = self.output_dir / filename
             image.save(image_path)
-            print(f"保存图片: {image_path}")
+            save_time = time.time() - save_start_time
+            print(f"保存图片: {image_path} (耗时: {save_time:.2f}秒)")
             
             # 记录结束状态
             end_time = time.time()
@@ -144,7 +153,9 @@ class InferenceBenchmark:
                 'prompt': prompt,
                 'size': size,
                 'steps': steps,
-                'inference_time': end_time - start_time,
+                'inference_time': inference_time,  # 使用纯推理时间
+                'total_time': end_time - start_time,  # 总时间（包括保存）
+                'save_time': save_time,  # 保存时间
                 'gpu_memory': end_memory,  # 使用实际使用的内存，而不是变化量
                 'success': True
             }
@@ -152,11 +163,15 @@ class InferenceBenchmark:
         except Exception as e:
             end_time = time.time()
             end_memory = self._get_gpu_memory_nvidia_smi()
+            if end_memory == 0.0:
+                end_memory = self._get_gpu_memory()
             return {
                 'prompt': prompt,
                 'size': size,
                 'steps': steps,
                 'inference_time': end_time - start_time,
+                'total_time': end_time - start_time,
+                'save_time': 0.0,
                 'gpu_memory': end_memory,  # 记录实际使用的内存
                 'success': False,
                 'error': str(e)
@@ -252,10 +267,15 @@ class InferenceBenchmark:
             result = subprocess.run(['nvidia-smi', '--query-gpu=memory.used', '--format=csv,noheader,nounits'], 
                                   capture_output=True, text=True)
             if result.returncode == 0:
-                memory_mb = float(result.stdout.strip())
-                memory_gb = memory_mb / 1024.0  # 转换为GB
-                print(f"🔍 GPU内存监控: {memory_mb:.0f}MB ({memory_gb:.2f}GB)")
-                return memory_gb
+                # 处理多行输出，取第一行
+                lines = result.stdout.strip().split('\n')
+                if lines and lines[0]:
+                    memory_mb = float(lines[0].strip())
+                    memory_gb = memory_mb / 1024.0  # 转换为GB
+                    print(f"🔍 GPU内存监控: {memory_mb:.0f}MB ({memory_gb:.2f}GB)")
+                    return memory_gb
+                else:
+                    print("⚠️ nvidia-smi输出为空")
             else:
                 print(f"⚠️ nvidia-smi命令失败: {result.stderr}")
         except Exception as e:
