@@ -21,7 +21,8 @@ class FluxInferenceTester:
     def __init__(self, gpu_id=0, model_path="./FLUX.1-schnell"):
         self.gpu_id = gpu_id
         self.model_path = model_path
-        self.device = f"cuda:{gpu_id}"
+        # 自动检测可用的GPU设备
+        self.device = self._get_available_device()
         self.results = []
         
         # 创建输出目录
@@ -45,26 +46,70 @@ class FluxInferenceTester:
         self.pipe = None
         self.load_model()
     
+    def _get_available_device(self):
+        """自动检测可用的GPU设备"""
+        try:
+            if torch.cuda.is_available():
+                # 检查指定的GPU ID是否可用
+                if self.gpu_id < torch.cuda.device_count():
+                    device = f"cuda:{self.gpu_id}"
+                    print(f"✅ 检测到GPU {self.gpu_id}: {torch.cuda.get_device_name(self.gpu_id)}")
+                    return device
+                else:
+                    print(f"⚠️ GPU {self.gpu_id} 不存在，使用GPU 0")
+                    device = "cuda:0"
+                    print(f"✅ 使用GPU 0: {torch.cuda.get_device_name(0)}")
+                    return device
+            else:
+                print("⚠️ 未检测到CUDA，使用CPU")
+                return "cpu"
+        except Exception as e:
+            print(f"⚠️ 设备检测失败: {e}，使用CPU")
+            return "cpu"
+    
     def load_model(self):
         """加载FLUX模型"""
         try:
             print("正在加载FLUX模型...")
-            self.pipe = FluxPipeline.from_pretrained(
-                self.model_path,
-                torch_dtype=torch.float16,
-                device_map=self.device
-            )
+            # 使用更兼容的device_map策略
+            if "cuda" in self.device:
+                self.pipe = FluxPipeline.from_pretrained(
+                    self.model_path,
+                    torch_dtype=torch.float16,
+                    device_map="auto"  # 使用auto让diffusers自动分配
+                )
+            else:
+                self.pipe = FluxPipeline.from_pretrained(
+                    self.model_path,
+                    torch_dtype=torch.float16,
+                    device_map="cpu"
+                )
             print("✅ FLUX模型加载成功")
         except Exception as e:
             print(f"❌ FLUX模型加载失败: {e}")
-            self.pipe = None
+            print("尝试使用CPU加载...")
+            try:
+                self.pipe = FluxPipeline.from_pretrained(
+                    self.model_path,
+                    torch_dtype=torch.float32,  # CPU使用float32
+                    device_map="cpu"
+                )
+                print("✅ FLUX模型在CPU上加载成功")
+            except Exception as e2:
+                print(f"❌ CPU加载也失败: {e2}")
+                self.pipe = None
     
     def get_gpu_memory(self):
-        """获取指定GPU的内存使用量"""
+        """获取当前GPU的内存使用量"""
         try:
+            # 获取实际使用的GPU ID
+            actual_gpu_id = self._get_actual_gpu_id()
+            if actual_gpu_id is None:
+                return 0.0
+                
             result = subprocess.run([
                 'nvidia-smi',
-                f'--id={self.gpu_id}',
+                f'--id={actual_gpu_id}',
                 '--query-gpu=memory.used,memory.total',
                 '--format=csv,noheader,nounits'
             ], capture_output=True, text=True)
@@ -75,19 +120,37 @@ class FluxInferenceTester:
                     used_mb, total_mb = lines[0].split(',')
                     used_gb = float(used_mb) / 1024.0
                     total_gb = float(total_mb) / 1024.0
-                    print(f"GPU {self.gpu_id} 内存: {used_gb:.2f}GB / {total_gb:.2f}GB")
+                    print(f"GPU {actual_gpu_id} 内存: {used_gb:.2f}GB / {total_gb:.2f}GB")
                     return used_gb
         except Exception as e:
-            print(f"获取GPU {self.gpu_id} 内存失败: {e}")
+            print(f"获取GPU内存失败: {e}")
         
         return 0.0
     
-    def get_detailed_gpu_memory(self):
-        """获取指定GPU的详细内存信息"""
+    def _get_actual_gpu_id(self):
+        """获取实际使用的GPU ID"""
         try:
+            if "cuda" in self.device:
+                # 从device字符串中提取GPU ID
+                if ":" in self.device:
+                    return int(self.device.split(":")[1])
+                else:
+                    return 0
+            return None
+        except:
+            return None
+    
+    def get_detailed_gpu_memory(self):
+        """获取当前GPU的详细内存信息"""
+        try:
+            # 获取实际使用的GPU ID
+            actual_gpu_id = self._get_actual_gpu_id()
+            if actual_gpu_id is None:
+                return {}
+                
             result = subprocess.run([
                 'nvidia-smi',
-                f'--id={self.gpu_id}',
+                f'--id={actual_gpu_id}',
                 '--query-gpu=memory.used,memory.total,memory.free,utilization.gpu,temperature.gpu,power.draw',
                 '--format=csv,noheader,nounits'
             ], capture_output=True, text=True)
@@ -108,7 +171,7 @@ class FluxInferenceTester:
                     free_gb = free_mb / 1024.0
                     
                     return {
-                        'gpu_id': self.gpu_id,
+                        'gpu_id': actual_gpu_id,
                         'used_gb': used_gb,
                         'total_gb': total_gb,
                         'free_gb': free_gb,
@@ -117,7 +180,7 @@ class FluxInferenceTester:
                         'power_watts': power
                     }
         except Exception as e:
-            print(f"获取GPU {self.gpu_id} 详细内存失败: {e}")
+            print(f"获取GPU详细内存失败: {e}")
         
         return {}
     
