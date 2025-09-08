@@ -195,7 +195,12 @@ class SimpleComfyUITester:
         
         progress_data = {
             'inference_start_time': None,
-            'inference_end_time': None
+            'inference_end_time': None,
+            'total_steps': 0,
+            'current_step': 0,
+            'text_encoding_time': 0.0,
+            'unet_time': 0.0,
+            'vae_decode_time': 0.0
         }
         
         last_queue_status = None
@@ -319,9 +324,7 @@ class SimpleComfyUITester:
                                                 step_time = (time.time() - step_start_time) / current_step
                                                 progress_data['step_times'].append(step_time)
                                                 
-                                                # 模拟attention层时间（基于经验值）
-                                                attention_time = step_time * 0.3  # 假设attention占30%
-                                                progress_data['attention_times'].append(attention_time)
+                                                # 简化：不记录attention层时间
                                                 
                                                 if current_step % 5 == 0:  # 每5步打印一次进度
                                                     print(f"进度: {current_step}/{total_steps} ({current_step/total_steps*100:.1f}%)")
@@ -346,65 +349,18 @@ class SimpleComfyUITester:
             progress_data['unet_start'] = start_time + (end_time - start_time) * 0.1  # 10%处开始
             progress_data['unet_end'] = end_time - (end_time - start_time) * 0.1  # 10%处结束
         
-        # 记录text encoding时间
-        progress_data['text_encoding_start'] = start_time
-        progress_data['text_encoding_end'] = progress_data['unet_start']
-        
-        # 记录VAE解码时间
-        progress_data['vae_decode_start'] = progress_data['unet_end']
-        progress_data['vae_decode_end'] = end_time
-        
-        # 计算各阶段时间 - 基于总时间进行合理估算
+        # 简化：只计算总推理时间，不进行复杂的层时间分析
         total_processing_time = end_time - start_time
         
-        if progress_data['text_encoding_start'] and progress_data['text_encoding_end']:
-            progress_data['text_encoding_time'] = progress_data['text_encoding_end'] - progress_data['text_encoding_start']
-        else:
-            # 基于总时间估算text encoding时间（通常占5-10%）
-            progress_data['text_encoding_time'] = total_processing_time * 0.08  # 假设8%
-        
-        if progress_data['unet_start'] and progress_data['unet_end']:
-            progress_data['unet_time'] = progress_data['unet_end'] - progress_data['unet_start']
-        else:
-            # 基于总时间估算UNet时间（通常占80-85%）
-            progress_data['unet_time'] = total_processing_time * 0.82  # 假设82%
-        
-        if progress_data['vae_decode_start'] and progress_data['vae_decode_end']:
-            progress_data['vae_decode_time'] = progress_data['vae_decode_end'] - progress_data['vae_decode_start']
-        else:
-            # 基于总时间估算VAE解码时间（通常占10-15%）
-            progress_data['vae_decode_time'] = total_processing_time * 0.10  # 假设10%
-        
-        # 确保时间分配合理
-        if progress_data['text_encoding_time'] + progress_data['unet_time'] + progress_data['vae_decode_time'] > total_processing_time:
-            # 如果估算时间超过总时间，按比例缩放
-            scale_factor = total_processing_time / (progress_data['text_encoding_time'] + progress_data['unet_time'] + progress_data['vae_decode_time'])
-            progress_data['text_encoding_time'] *= scale_factor
-            progress_data['unet_time'] *= scale_factor
-            progress_data['vae_decode_time'] *= scale_factor
-        
-        # 计算attention总时间
-        if progress_data['attention_times']:
-            progress_data['total_attention_time'] = sum(progress_data['attention_times'])
-            progress_data['avg_attention_time_per_step'] = sum(progress_data['attention_times']) / len(progress_data['attention_times'])
-        else:
-            # 基于UNet时间估算attention时间（通常占30-40%）
-            progress_data['total_attention_time'] = progress_data['unet_time'] * 0.35  # 假设35%
-            progress_data['avg_attention_time_per_step'] = progress_data['total_attention_time'] / max(progress_data['total_steps'], 1)
-        
-        # 计算其他层时间
-        progress_data['other_layers_time'] = progress_data['unet_time'] - progress_data['total_attention_time']
-        
-        # 确保attention时间不超过UNet时间
-        if progress_data['total_attention_time'] > progress_data['unet_time']:
-            progress_data['total_attention_time'] = progress_data['unet_time'] * 0.35
-            progress_data['other_layers_time'] = progress_data['unet_time'] * 0.65
+        # 基于总时间进行简单估算
+        progress_data['text_encoding_time'] = total_processing_time * 0.08  # 8%
+        progress_data['unet_time'] = total_processing_time * 0.82  # 82%
+        progress_data['vae_decode_time'] = total_processing_time * 0.10  # 10%
         
         print(f"推理阶段时间统计:")
+        print(f"  - 总推理时间: {total_processing_time:.2f}秒")
         print(f"  - Text Encoding: {progress_data.get('text_encoding_time', 0):.2f}秒")
         print(f"  - UNet推理: {progress_data.get('unet_time', 0):.2f}秒")
-        print(f"    - Attention层: {progress_data.get('total_attention_time', 0):.2f}秒")
-        print(f"    - 其他层: {progress_data.get('other_layers_time', 0):.2f}秒")
         print(f"  - VAE解码: {progress_data.get('vae_decode_time', 0):.2f}秒")
         
         return progress_data
@@ -685,8 +641,7 @@ class SimpleComfyUITester:
         end_detailed_gpu = self.get_detailed_gpu_memory()
         end_system_memory = self.get_system_memory()
         
-        # 计算各部分时间
-        # 使用监控函数返回的准确推理时间
+        # 简化：只计算总推理时间
         if progress_data and progress_data.get('inference_start_time') and progress_data.get('inference_end_time'):
             actual_inference_time = progress_data['inference_end_time'] - progress_data['inference_start_time']
             print(f"使用监控函数测量的推理时间: {actual_inference_time:.2f}秒")
@@ -695,11 +650,9 @@ class SimpleComfyUITester:
             actual_inference_time = completion_time - request_time
             print(f"使用传统方法测量的推理时间: {actual_inference_time:.2f}秒")
         
-        total_inference_time = actual_inference_time  # 使用实际推理时间
-        request_time_taken = 0.0  # ComfyUI请求时间很短，可以忽略
-        processing_time = end_time - completion_time  # 图片获取等后处理时间
-        
-        # 简化：只记录总推理时间，不计算各层时间
+        total_inference_time = actual_inference_time
+        request_time_taken = 0.0
+        processing_time = end_time - completion_time
         
         # 计算统计信息
         gpu_memory_used = end_gpu_memory  # 使用实际使用的内存，而不是变化量
