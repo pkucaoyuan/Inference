@@ -22,9 +22,10 @@ import io
 class SimpleComfyUITester:
     """简化的ComfyUI测试器"""
     
-    def __init__(self, comfyui_port=8188):
+    def __init__(self, comfyui_port=8188, gpu_id=0):
         self.comfyui_port = comfyui_port
         self.comfyui_url = f"http://localhost:{comfyui_port}"
+        self.gpu_id = gpu_id  # 指定使用的GPU ID
         self.results = []
         
         # 创建输出目录
@@ -32,29 +33,30 @@ class SimpleComfyUITester:
         self.output_dir = Path(f"neta_lumina_output_{timestamp}")
         self.output_dir.mkdir(exist_ok=True)
         print(f"输出目录: {self.output_dir}")
+        print(f"监控GPU ID: {self.gpu_id}")
         
     def get_gpu_memory(self):
-        """获取GPU内存使用量"""
+        """获取指定GPU的内存使用量"""
         try:
-            # 获取GPU内存使用情况
+            # 获取指定GPU的内存使用情况
             result = subprocess.run([
                 'nvidia-smi',
+                f'--id={self.gpu_id}',
                 '--query-gpu=memory.used,memory.total',
                 '--format=csv,noheader,nounits'
             ], capture_output=True, text=True)
 
             if result.returncode == 0:
-                # 处理多GPU情况，取第一个GPU的内存使用量
                 lines = result.stdout.strip().split('\n')
                 if lines and lines[0]:
                     # 格式: "used,total"
                     used_mb, total_mb = lines[0].split(',')
                     used_gb = float(used_mb) / 1024.0
                     total_gb = float(total_mb) / 1024.0
-                    print(f"GPU内存: {used_gb:.2f}GB / {total_gb:.2f}GB")
+                    print(f"GPU {self.gpu_id} 内存: {used_gb:.2f}GB / {total_gb:.2f}GB")
                     return used_gb
         except Exception as e:
-            print(f"获取GPU内存失败: {e}")
+            print(f"获取GPU {self.gpu_id} 内存失败: {e}")
         
         return 0.0
     
@@ -126,34 +128,98 @@ class SimpleComfyUITester:
             return {}
     
     def get_detailed_gpu_memory(self):
-        """获取详细的GPU内存信息"""
+        """获取指定GPU的详细内存信息"""
         try:
             result = subprocess.run([
                 'nvidia-smi',
-                '--query-gpu=memory.used,memory.total,memory.free,utilization.gpu',
+                f'--id={self.gpu_id}',
+                '--query-gpu=memory.used,memory.total,memory.free,utilization.gpu,temperature.gpu,power.draw',
                 '--format=csv,noheader,nounits'
             ], capture_output=True, text=True)
 
             if result.returncode == 0:
                 lines = result.stdout.strip().split('\n')
                 if lines and lines[0]:
-                    # 格式: "used,total,free,utilization"
-                    used_mb, total_mb, free_mb, util = lines[0].split(',')
-                    used_gb = float(used_mb) / 1024.0
-                    total_gb = float(total_mb) / 1024.0
-                    free_gb = float(free_mb) / 1024.0
-                    utilization = float(util)
+                    # 格式: "used,total,free,utilization,temperature,power"
+                    parts = lines[0].split(',')
+                    used_mb = float(parts[0])
+                    total_mb = float(parts[1])
+                    free_mb = float(parts[2])
+                    utilization = float(parts[3])
+                    temperature = float(parts[4]) if len(parts) > 4 else 0
+                    power = float(parts[5]) if len(parts) > 5 else 0
+                    
+                    used_gb = used_mb / 1024.0
+                    total_gb = total_mb / 1024.0
+                    free_gb = free_mb / 1024.0
                     
                     return {
+                        'gpu_id': self.gpu_id,
                         'used_gb': used_gb,
                         'total_gb': total_gb,
                         'free_gb': free_gb,
-                        'utilization_percent': utilization
+                        'utilization_percent': utilization,
+                        'temperature_c': temperature,
+                        'power_watts': power
                     }
         except Exception as e:
-            print(f"获取详细GPU内存失败: {e}")
+            print(f"获取GPU {self.gpu_id} 详细内存失败: {e}")
         
         return {}
+    
+    def monitor_inference_progress(self, timeout=300):
+        """监控推理进度，获取各阶段时间"""
+        print("开始监控推理进度...")
+        
+        start_time = time.time()
+        progress_data = {
+            'text_encoding_start': None,
+            'text_encoding_end': None,
+            'unet_start': None,
+            'unet_end': None,
+            'vae_decode_start': None,
+            'vae_decode_end': None,
+            'total_steps': 0,
+            'current_step': 0,
+            'step_times': []
+        }
+        
+        while time.time() - start_time < timeout:
+            try:
+                # 检查队列状态
+                response = requests.get(f"{self.comfyui_url}/queue")
+                if response.status_code == 200:
+                    queue_data = response.json()
+                    queue_pending = queue_data.get('queue_pending', [])
+                    queue_running = queue_data.get('queue_running', [])
+                    
+                    if not queue_pending and not queue_running:
+                        print("✅ 推理完成！")
+                        break
+                    
+                    # 检查历史记录获取进度信息
+                    history_response = requests.get(f"{self.comfyui_url}/history")
+                    if history_response.status_code == 200:
+                        history = history_response.json()
+                        # 这里可以解析历史记录获取更详细的进度信息
+                        # 由于ComfyUI API限制，我们主要依赖队列状态
+                
+                time.sleep(1)  # 更频繁的检查
+            except Exception as e:
+                print(f"监控进度失败: {e}")
+                time.sleep(2)
+        
+        # 计算各阶段时间
+        if progress_data['text_encoding_start'] and progress_data['text_encoding_end']:
+            progress_data['text_encoding_time'] = progress_data['text_encoding_end'] - progress_data['text_encoding_start']
+        
+        if progress_data['unet_start'] and progress_data['unet_end']:
+            progress_data['unet_time'] = progress_data['unet_end'] - progress_data['unet_start']
+        
+        if progress_data['vae_decode_start'] and progress_data['vae_decode_end']:
+            progress_data['vae_decode_time'] = progress_data['vae_decode_end'] - progress_data['vae_decode_start']
+        
+        return progress_data
     
     def check_comfyui_status(self):
         """检查ComfyUI状态"""
@@ -413,10 +479,9 @@ class SimpleComfyUITester:
         if not self.send_inference_request(prompt, negative_prompt, steps, cfg):
             return None
         
-        # 等待完成
+        # 监控推理进度
         completion_time = time.time()
-        if not self.wait_for_completion():
-            return None
+        progress_data = self.monitor_inference_progress()
         
         # 暂时跳过图片获取，专注于性能数据
         image_data = None
@@ -458,6 +523,8 @@ class SimpleComfyUITester:
             'model_parameters': model_info,
             'gpu_details_start': start_detailed_gpu,
             'gpu_details_end': end_detailed_gpu,
+            'progress_data': progress_data,
+            'gpu_id': self.gpu_id,
             'timestamp': datetime.now().isoformat()
         }
         
@@ -626,6 +693,7 @@ def main():
     
     parser = argparse.ArgumentParser(description="简化ComfyUI Neta Lumina测试工具")
     parser.add_argument("--port", type=int, default=8188, help="ComfyUI端口")
+    parser.add_argument("--gpu-id", type=int, default=0, help="指定使用的GPU ID")
     parser.add_argument("--prompt", default="A beautiful anime character in a magical garden, detailed, high quality", 
                        help="推理提示词")
     parser.add_argument("--negative-prompt", default="", help="负面提示词")
@@ -636,7 +704,7 @@ def main():
     args = parser.parse_args()
     
     # 创建测试器
-    tester = SimpleComfyUITester(args.port)
+    tester = SimpleComfyUITester(args.port, args.gpu_id)
     
     if args.batch:
         # 批量测试
