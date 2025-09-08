@@ -155,26 +155,229 @@ class InferenceBenchmark:
             }
     
     def _measure_actual_layer_times(self, pipe, prompt: str, size: Tuple[int, int], steps: int, model_name: str) -> Dict:
-        """实际测量各层推理时间"""
+        """实际测量各层推理时间 - 使用Hook机制进行真实测量"""
         try:
             print("开始实际测量各层推理时间...")
             
-            # 直接使用基础测量方法，避免Profiler的复杂性
-            print("使用基础测量方法...")
-            layer_times = self._fallback_layer_measurement(pipe, prompt, size, steps, model_name)
+            # 初始化时间记录
+            layer_times = {
+                'text_encoding_time': 0.0,
+                'unet_time': 0.0,
+                'vae_decode_time': 0.0,
+                'attention_time': 0.0,
+                'other_layers_time': 0.0,
+                'step_times': [],
+                'attention_step_times': [],
+                'other_layers_step_times': [],
+                'total_steps': steps,
+                'image': None
+            }
+            
+            # 时间记录变量
+            text_encoding_start = 0.0
+            text_encoding_end = 0.0
+            unet_start = 0.0
+            unet_end = 0.0
+            vae_decode_start = 0.0
+            vae_decode_end = 0.0
+            
+            attention_times = []
+            other_layer_times = []
+            step_times = []
+            
+            # 设置Hook来测量各层时间
+            hooks = []
+            
+            def text_encoder_hook(module, input, output):
+                nonlocal text_encoding_start, text_encoding_end
+                if text_encoding_start == 0:
+                    text_encoding_start = time.time()
+                text_encoding_end = time.time()
+            
+            def unet_hook(module, input, output):
+                nonlocal unet_start, unet_end
+                if unet_start == 0:
+                    unet_start = time.time()
+                unet_end = time.time()
+            
+            def attention_hook(module, input, output):
+                start_time = time.time()
+                # 等待GPU计算完成
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                end_time = time.time()
+                attention_times.append(end_time - start_time)
+            
+            def other_layer_hook(module, input, output):
+                start_time = time.time()
+                # 等待GPU计算完成
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                end_time = time.time()
+                other_layer_times.append(end_time - start_time)
+            
+            def vae_hook(module, input, output):
+                nonlocal vae_decode_start, vae_decode_end
+                if vae_decode_start == 0:
+                    vae_decode_start = time.time()
+                vae_decode_end = time.time()
+            
+            # 注册Hook
+            try:
+                # 注册Text Encoder Hook
+                if hasattr(pipe, 'text_encoder'):
+                    print("注册Text Encoder Hook...")
+                    for name, module in pipe.text_encoder.named_modules():
+                        if 'attention' in name.lower() or 'attn' in name.lower():
+                            hook = module.register_forward_hook(text_encoder_hook)
+                            hooks.append(hook)
+                            print(f"  - 注册Text Encoder Attention Hook: {name}")
+                            break
+                
+                # 注册UNet Hook
+                if hasattr(pipe, 'unet'):
+                    print("注册UNet Hook...")
+                    attention_count = 0
+                    other_count = 0
+                    unet_count = 0
+                    
+                    for name, module in pipe.unet.named_modules():
+                        if 'attention' in name.lower() or 'attn' in name.lower():
+                            hook = module.register_forward_hook(attention_hook)
+                            hooks.append(hook)
+                            attention_count += 1
+                            if attention_count <= 3:  # 只打印前3个
+                                print(f"  - 注册Attention Hook: {name}")
+                        elif 'conv' in name.lower() or 'linear' in name.lower() or 'norm' in name.lower():
+                            hook = module.register_forward_hook(other_layer_hook)
+                            hooks.append(hook)
+                            other_count += 1
+                            if other_count <= 3:  # 只打印前3个
+                                print(f"  - 注册其他层Hook: {name}")
+                        elif 'down' in name.lower() or 'up' in name.lower() or 'mid' in name.lower():
+                            hook = module.register_forward_hook(unet_hook)
+                            hooks.append(hook)
+                            unet_count += 1
+                            if unet_count <= 3:  # 只打印前3个
+                                print(f"  - 注册UNet Hook: {name}")
+                    
+                    print(f"  - 总计注册: {attention_count}个Attention, {other_count}个其他层, {unet_count}个UNet")
+                
+                # 注册VAE Hook
+                if hasattr(pipe, 'vae'):
+                    print("注册VAE Hook...")
+                    for name, module in pipe.vae.named_modules():
+                        if 'decode' in name.lower() or 'conv' in name.lower():
+                            hook = module.register_forward_hook(vae_hook)
+                            hooks.append(hook)
+                            print(f"  - 注册VAE Hook: {name}")
+                            break
+                
+                print(f"总共注册了 {len(hooks)} 个Hook进行实际测量")
+                
+            except Exception as e:
+                print(f"⚠️ Hook注册失败: {e}")
+            
+            # 准备推理参数
+            if model_name == "FLUX":
+                kwargs = {
+                    'prompt': prompt,
+                    'height': size[0],
+                    'width': size[1],
+                    'guidance_scale': 3.5,
+                    'num_inference_steps': steps,
+                    'max_sequence_length': 512,
+                    'generator': torch.Generator("cpu").manual_seed(0)
+                }
+            elif model_name == "Lumina":
+                kwargs = {
+                    'prompt': prompt,
+                    'height': size[0],
+                    'width': size[1],
+                    'num_inference_steps': steps,
+                    'guidance_scale': 4.0,
+                    'cfg_trunc_ratio': 1.0,
+                    'cfg_normalization': True,
+                    'max_sequence_length': 256
+                }
+            
+            # 执行推理并测量时间
+            print("执行推理并实际测量各层时间...")
+            total_start = time.time()
+            image = pipe(**kwargs).images[0]
+            total_end = time.time()
+            
+            # 清理Hook
+            for hook in hooks:
+                hook.remove()
+            
+            # 计算各层实际时间
+            total_time = total_end - total_start
+            
+            print(f"Hook测量结果:")
+            print(f"  - Text Encoding: {text_encoding_start:.3f} -> {text_encoding_end:.3f}")
+            print(f"  - UNet: {unet_start:.3f} -> {unet_end:.3f}")
+            print(f"  - VAE: {vae_decode_start:.3f} -> {vae_decode_end:.3f}")
+            print(f"  - Attention调用次数: {len(attention_times)}")
+            print(f"  - 其他层调用次数: {len(other_layer_times)}")
+            
+            # 计算Text Encoding时间
+            if text_encoding_start > 0 and text_encoding_end > 0:
+                layer_times['text_encoding_time'] = text_encoding_end - text_encoding_start
+                print(f"  ✅ Text Encoding实际测量: {layer_times['text_encoding_time']:.3f}秒")
+            else:
+                layer_times['text_encoding_time'] = total_time * 0.08
+                print(f"  ⚠️ Text Encoding使用估算: {layer_times['text_encoding_time']:.3f}秒")
+            
+            # 计算UNet时间
+            if unet_start > 0 and unet_end > 0:
+                layer_times['unet_time'] = unet_end - unet_start
+                print(f"  ✅ UNet实际测量: {layer_times['unet_time']:.3f}秒")
+            else:
+                layer_times['unet_time'] = total_time * 0.85
+                print(f"  ⚠️ UNet使用估算: {layer_times['unet_time']:.3f}秒")
+            
+            # 计算VAE解码时间
+            if vae_decode_start > 0 and vae_decode_end > 0:
+                layer_times['vae_decode_time'] = vae_decode_end - vae_decode_start
+                print(f"  ✅ VAE实际测量: {layer_times['vae_decode_time']:.3f}秒")
+            else:
+                layer_times['vae_decode_time'] = total_time * 0.07
+                print(f"  ⚠️ VAE使用估算: {layer_times['vae_decode_time']:.3f}秒")
+            
+            # 计算Attention和其他层时间
+            if attention_times:
+                layer_times['attention_time'] = sum(attention_times)
+                layer_times['other_layers_time'] = layer_times['unet_time'] - layer_times['attention_time']
+                print(f"  ✅ Attention实际测量: {layer_times['attention_time']:.3f}秒 (来自{len(attention_times)}次调用)")
+                print(f"  ✅ 其他层计算: {layer_times['other_layers_time']:.3f}秒")
+            else:
+                layer_times['attention_time'] = layer_times['unet_time'] * 0.35
+                layer_times['other_layers_time'] = layer_times['unet_time'] * 0.65
+                print(f"  ⚠️ Attention使用估算: {layer_times['attention_time']:.3f}秒")
+                print(f"  ⚠️ 其他层使用估算: {layer_times['other_layers_time']:.3f}秒")
+            
+            # 计算每步时间
+            layer_times['step_time'] = layer_times['unet_time'] / steps
+            layer_times['attention_step_time'] = layer_times['attention_time'] / steps
+            layer_times['other_layers_step_time'] = layer_times['other_layers_time'] / steps
+            
+            # 记录图片
+            layer_times['image'] = image
             
             print(f"实际测量完成:")
-            print(f"  - Text Encoding: {layer_times.get('text_encoding_time', 0):.2f}秒")
-            print(f"  - UNet: {layer_times.get('unet_time', 0):.2f}秒")
-            print(f"  - VAE Decode: {layer_times.get('vae_decode_time', 0):.2f}秒")
-            print(f"  - Attention: {layer_times.get('attention_time', 0):.2f}秒")
-            print(f"  - 其他层: {layer_times.get('other_layers_time', 0):.2f}秒")
+            print(f"  - 总推理时间: {total_time:.2f}秒")
+            print(f"  - Text Encoding: {layer_times['text_encoding_time']:.2f}秒")
+            print(f"  - UNet: {layer_times['unet_time']:.2f}秒")
+            print(f"  - VAE Decode: {layer_times['vae_decode_time']:.2f}秒")
+            print(f"  - Attention: {layer_times['attention_time']:.2f}秒")
+            print(f"  - 其他层: {layer_times['other_layers_time']:.2f}秒")
             
             return layer_times
             
         except Exception as e:
             print(f"实际测量失败: {e}")
-            # 如果基础测量失败，使用估算方法
+            # 如果Hook测量失败，使用基础测量
             return self._fallback_layer_measurement(pipe, prompt, size, steps, model_name)
     
     def _analyze_profiler_results(self, prof, model_name: str, steps: int) -> Dict:
