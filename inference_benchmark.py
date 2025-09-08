@@ -243,12 +243,22 @@ class InferenceBenchmark:
                 else:
                     print("⚠️ 模型没有text_encoder属性")
                 
-                # 注册UNet Hook
+                # 注册UNet/Transformer Hook
                 print(f"检查unet属性: {hasattr(pipe, 'unet')}")
+                print(f"检查transformer属性: {hasattr(pipe, 'transformer')}")
+                
+                # FLUX使用transformer，其他模型使用unet
+                unet_module = None
                 if hasattr(pipe, 'unet'):
+                    unet_module = pipe.unet
                     print("注册UNet Hook...")
-                    unet_modules = list(pipe.unet.named_modules())
-                    print(f"UNet模块数量: {len(unet_modules)}")
+                elif hasattr(pipe, 'transformer'):
+                    unet_module = pipe.transformer
+                    print("注册Transformer Hook...")
+                
+                if unet_module is not None:
+                    unet_modules = list(unet_module.named_modules())
+                    print(f"UNet/Transformer模块数量: {len(unet_modules)}")
                     attention_count = 0
                     other_count = 0
                     unet_count = 0
@@ -266,16 +276,16 @@ class InferenceBenchmark:
                             other_count += 1
                             if other_count <= 3:  # 只打印前3个
                                 print(f"  - 注册其他层Hook: {name}")
-                        elif 'down' in name.lower() or 'up' in name.lower() or 'mid' in name.lower():
+                        elif 'down' in name.lower() or 'up' in name.lower() or 'mid' in name.lower() or 'block' in name.lower():
                             hook = module.register_forward_hook(unet_hook)
                             hooks.append(hook)
                             unet_count += 1
                             if unet_count <= 3:  # 只打印前3个
-                                print(f"  - 注册UNet Hook: {name}")
+                                print(f"  - 注册UNet/Transformer Hook: {name}")
                     
-                    print(f"  - 总计注册: {attention_count}个Attention, {other_count}个其他层, {unet_count}个UNet")
+                    print(f"  - 总计注册: {attention_count}个Attention, {other_count}个其他层, {unet_count}个UNet/Transformer")
                 else:
-                    print("⚠️ 模型没有unet属性")
+                    print("⚠️ 模型没有unet或transformer属性")
                 
                 # 注册VAE Hook
                 print(f"检查vae属性: {hasattr(pipe, 'vae')}")
@@ -283,12 +293,17 @@ class InferenceBenchmark:
                     print("注册VAE Hook...")
                     vae_modules = list(pipe.vae.named_modules())
                     print(f"VAE模块数量: {len(vae_modules)}")
+                    vae_hook_count = 0
                     for name, module in vae_modules:
-                        if 'decode' in name.lower() or 'conv' in name.lower():
+                        if 'decode' in name.lower() or 'conv' in name.lower() or 'up' in name.lower():
                             hook = module.register_forward_hook(vae_hook)
                             hooks.append(hook)
-                            print(f"  - 注册VAE Hook: {name}")
-                            break
+                            vae_hook_count += 1
+                            if vae_hook_count <= 3:  # 只打印前3个
+                                print(f"  - 注册VAE Hook: {name}")
+                            if vae_hook_count >= 5:  # 注册足够的Hook
+                                break
+                    print(f"  - 总计注册: {vae_hook_count}个VAE Hook")
                 else:
                     print("⚠️ 模型没有vae属性")
                 
