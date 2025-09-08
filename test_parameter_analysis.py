@@ -87,7 +87,10 @@ def analyze_model_parameters(model, model_name="Model"):
     def analyze_module(module, prefix=""):
         nonlocal total_params, total_size_mb
         
-        for name, child in module.named_children():
+        # 使用list()创建子模块的副本，避免在迭代时修改字典
+        children = list(module.named_children())
+        
+        for name, child in children:
             full_name = f"{prefix}.{name}" if prefix else name
             
             # 计算当前模块参数
