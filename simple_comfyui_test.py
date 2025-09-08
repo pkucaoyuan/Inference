@@ -85,6 +85,76 @@ class SimpleComfyUITester:
             print(f"获取系统内存失败: {e}")
             return 0.0
     
+    def get_model_parameters(self):
+        """获取模型各部分参数量"""
+        try:
+            model_info = {}
+            
+            # UNet模型参数量
+            unet_path = Path("../ComfyUI/models/unet/neta-lumina-v1.0.safetensors")
+            if unet_path.exists():
+                unet_size = unet_path.stat().st_size / (1024**3)  # GB
+                model_info['unet_size_gb'] = unet_size
+                # 估算参数量 (假设FP16，每个参数2字节)
+                model_info['unet_parameters'] = int(unet_size * 1024**3 / 2)
+            
+            # Text Encoder参数量
+            text_encoder_path = Path("../ComfyUI/models/text_encoders/gemma_2_2b_fp16.safetensors")
+            if text_encoder_path.exists():
+                te_size = text_encoder_path.stat().st_size / (1024**3)  # GB
+                model_info['text_encoder_size_gb'] = te_size
+                model_info['text_encoder_parameters'] = int(te_size * 1024**3 / 2)
+            
+            # VAE参数量
+            vae_path = Path("../ComfyUI/models/vae/ae.safetensors")
+            if vae_path.exists():
+                vae_size = vae_path.stat().st_size / (1024**3)  # GB
+                model_info['vae_size_gb'] = vae_size
+                model_info['vae_parameters'] = int(vae_size * 1024**3 / 2)
+            
+            # 计算总参数量
+            total_params = sum([
+                model_info.get('unet_parameters', 0),
+                model_info.get('text_encoder_parameters', 0),
+                model_info.get('vae_parameters', 0)
+            ])
+            model_info['total_parameters'] = total_params
+            
+            return model_info
+        except Exception as e:
+            print(f"获取模型参数量失败: {e}")
+            return {}
+    
+    def get_detailed_gpu_memory(self):
+        """获取详细的GPU内存信息"""
+        try:
+            result = subprocess.run([
+                'nvidia-smi',
+                '--query-gpu=memory.used,memory.total,memory.free,utilization.gpu',
+                '--format=csv,noheader,nounits'
+            ], capture_output=True, text=True)
+
+            if result.returncode == 0:
+                lines = result.stdout.strip().split('\n')
+                if lines and lines[0]:
+                    # 格式: "used,total,free,utilization"
+                    used_mb, total_mb, free_mb, util = lines[0].split(',')
+                    used_gb = float(used_mb) / 1024.0
+                    total_gb = float(total_mb) / 1024.0
+                    free_gb = float(free_mb) / 1024.0
+                    utilization = float(util)
+                    
+                    return {
+                        'used_gb': used_gb,
+                        'total_gb': total_gb,
+                        'free_gb': free_gb,
+                        'utilization_percent': utilization
+                    }
+        except Exception as e:
+            print(f"获取详细GPU内存失败: {e}")
+        
+        return {}
+    
     def check_comfyui_status(self):
         """检查ComfyUI状态"""
         try:
@@ -323,19 +393,28 @@ class SimpleComfyUITester:
         print(f"负面提示词: {negative_prompt}")
         print(f"步数: {steps}, CFG: {cfg}")
         
+        # 获取模型参数量信息
+        print("正在获取模型参数量信息...")
+        model_info = self.get_model_parameters()
+        
         # 记录开始状态
         start_time = time.time()
         print("正在获取开始状态...")
         start_gpu_memory = self.get_gpu_memory()
+        start_detailed_gpu = self.get_detailed_gpu_memory()
         start_system_memory = self.get_system_memory()
         
         print(f"开始状态 - GPU内存: {start_gpu_memory:.2f}GB, 系统内存: {start_system_memory:.2f}GB")
+        if start_detailed_gpu:
+            print(f"GPU利用率: {start_detailed_gpu.get('utilization_percent', 0):.1f}%")
         
         # 发送推理请求
+        request_time = time.time()
         if not self.send_inference_request(prompt, negative_prompt, steps, cfg):
             return None
         
         # 等待完成
+        completion_time = time.time()
         if not self.wait_for_completion():
             return None
         
@@ -346,33 +425,59 @@ class SimpleComfyUITester:
         end_time = time.time()
         print("正在获取结束状态...")
         end_gpu_memory = self.get_gpu_memory()
+        end_detailed_gpu = self.get_detailed_gpu_memory()
         end_system_memory = self.get_system_memory()
         
+        # 计算各部分时间
+        total_inference_time = end_time - start_time
+        request_time_taken = completion_time - request_time
+        processing_time = end_time - completion_time
+        
         # 计算统计信息
-        inference_time = end_time - start_time
         gpu_memory_used = end_gpu_memory - start_gpu_memory
         system_memory_used = end_system_memory - start_system_memory
         
         print(f"结束状态 - GPU内存: {end_gpu_memory:.2f}GB, 系统内存: {end_system_memory:.2f}GB")
+        if end_detailed_gpu:
+            print(f"GPU利用率: {end_detailed_gpu.get('utilization_percent', 0):.1f}%")
         
         result = {
             'prompt': prompt,
             'negative_prompt': negative_prompt,
             'steps': steps,
             'cfg': cfg,
-            'inference_time': inference_time,
+            'total_inference_time': total_inference_time,
+            'request_time': request_time_taken,
+            'processing_time': processing_time,
             'start_gpu_memory': start_gpu_memory,
             'end_gpu_memory': end_gpu_memory,
             'gpu_memory_used': gpu_memory_used,
             'start_system_memory': start_system_memory,
             'end_system_memory': end_system_memory,
             'system_memory_used': system_memory_used,
+            'model_parameters': model_info,
+            'gpu_details_start': start_detailed_gpu,
+            'gpu_details_end': end_detailed_gpu,
             'timestamp': datetime.now().isoformat()
         }
         
-        print(f"推理完成 - 时间: {inference_time:.2f}秒")
+        print(f"推理完成 - 总时间: {total_inference_time:.2f}秒")
+        print(f"  - 请求时间: {request_time_taken:.2f}秒")
+        print(f"  - 处理时间: {processing_time:.2f}秒")
         print(f"GPU内存变化: {gpu_memory_used:+.2f}GB")
         print(f"系统内存变化: {system_memory_used:+.2f}GB")
+        
+        # 打印模型参数量信息
+        if model_info:
+            print(f"模型参数量:")
+            if 'unet_parameters' in model_info:
+                print(f"  - UNet: {model_info['unet_parameters']:,} 参数 ({model_info.get('unet_size_gb', 0):.2f}GB)")
+            if 'text_encoder_parameters' in model_info:
+                print(f"  - Text Encoder: {model_info['text_encoder_parameters']:,} 参数 ({model_info.get('text_encoder_size_gb', 0):.2f}GB)")
+            if 'vae_parameters' in model_info:
+                print(f"  - VAE: {model_info['vae_parameters']:,} 参数 ({model_info.get('vae_size_gb', 0):.2f}GB)")
+            if 'total_parameters' in model_info:
+                print(f"  - 总计: {model_info['total_parameters']:,} 参数")
         
         return result
     
@@ -451,20 +556,67 @@ class SimpleComfyUITester:
         print("=" * 50)
         
         total_tests = len(self.results)
-        total_time = sum(r['inference_time'] for r in self.results)
-        avg_time = total_time / total_tests
+        successful_tests = len([r for r in self.results if r])
         
         print(f"总测试数: {total_tests}")
-        print(f"总推理时间: {total_time:.2f}秒")
-        print(f"平均推理时间: {avg_time:.2f}秒")
+        print(f"成功测试: {successful_tests}")
+        print(f"失败测试: {total_tests - successful_tests}")
+        
+        if successful_tests > 0:
+            # 基本性能统计
+            avg_total_time = sum(r.get('total_inference_time', 0) for r in self.results if r) / successful_tests
+            avg_request_time = sum(r.get('request_time', 0) for r in self.results if r) / successful_tests
+            avg_processing_time = sum(r.get('processing_time', 0) for r in self.results if r) / successful_tests
+            
+            print(f"\n时间统计:")
+            print(f"  平均总推理时间: {avg_total_time:.2f}秒")
+            print(f"  平均请求时间: {avg_request_time:.2f}秒")
+            print(f"  平均处理时间: {avg_processing_time:.2f}秒")
+            
+            # 内存统计
+            avg_gpu_memory = sum(r.get('gpu_memory_used', 0) for r in self.results if r) / successful_tests
+            avg_system_memory = sum(r.get('system_memory_used', 0) for r in self.results if r) / successful_tests
+            
+            print(f"\n内存统计:")
+            print(f"  平均GPU内存使用: {avg_gpu_memory:.2f}GB")
+            print(f"  平均系统内存使用: {avg_system_memory:.2f}GB")
+            
+            # 模型参数量信息（从第一个结果获取）
+            first_result = self.results[0]
+            if 'model_parameters' in first_result and first_result['model_parameters']:
+                model_info = first_result['model_parameters']
+                print(f"\n模型参数量:")
+                if 'unet_parameters' in model_info:
+                    print(f"  UNet: {model_info['unet_parameters']:,} 参数 ({model_info.get('unet_size_gb', 0):.2f}GB)")
+                if 'text_encoder_parameters' in model_info:
+                    print(f"  Text Encoder: {model_info['text_encoder_parameters']:,} 参数 ({model_info.get('text_encoder_size_gb', 0):.2f}GB)")
+                if 'vae_parameters' in model_info:
+                    print(f"  VAE: {model_info['vae_parameters']:,} 参数 ({model_info.get('vae_size_gb', 0):.2f}GB)")
+                if 'total_parameters' in model_info:
+                    print(f"  总计: {model_info['total_parameters']:,} 参数")
+            
+            # GPU利用率统计
+            gpu_utilizations = []
+            for r in self.results:
+                if r and 'gpu_details_start' in r and r['gpu_details_start']:
+                    gpu_utilizations.append(r['gpu_details_start'].get('utilization_percent', 0))
+            
+            if gpu_utilizations:
+                avg_gpu_util = sum(gpu_utilizations) / len(gpu_utilizations)
+                print(f"\nGPU利用率: {avg_gpu_util:.1f}%")
         
         print("\n详细结果:")
         for i, result in enumerate(self.results, 1):
-            print(f"测试 {i}:")
-            print(f"  推理时间: {result['inference_time']:.2f}秒")
-            print(f"  GPU内存使用: {result['gpu_memory_used']:+.2f}GB")
-            print(f"  系统内存使用: {result['system_memory_used']:+.2f}GB")
-            print(f"  提示词: {result['prompt'][:50]}...")
+            if result:
+                print(f"测试 {i}:")
+                print(f"  总推理时间: {result.get('total_inference_time', 0):.2f}秒")
+                print(f"  请求时间: {result.get('request_time', 0):.2f}秒")
+                print(f"  处理时间: {result.get('processing_time', 0):.2f}秒")
+                print(f"  GPU内存使用: {result.get('gpu_memory_used', 0):+.2f}GB")
+                print(f"  系统内存使用: {result.get('system_memory_used', 0):+.2f}GB")
+                print(f"  提示词: {result.get('prompt', 'N/A')[:50]}...")
+            else:
+                print(f"测试 {i}: 失败")
         
         print("=" * 50)
 
