@@ -825,10 +825,10 @@ class InferenceBenchmark:
             )
             
             # 修改为与Neta LUMINA相同的配置
-            from diffusers import FlowMatchEulerDiscreteScheduler
-            # 使用linear_quadratic调度器（类似Neta LUMINA）
-            pipe.scheduler = FlowMatchEulerDiscreteScheduler.from_config(pipe.scheduler.config)
-            print("已配置为与Neta LUMINA相同的调度器")
+            from diffusers import DPMSolverMultistepScheduler
+            # 使用linear_quadratic调度器（对应DPMSolverMultistepScheduler）
+            pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+            print("已配置为与Neta LUMINA相同的调度器: DPMSolverMultistepScheduler")
             # 移除CPU卸载，避免每次推理时的数据传输开销
             # pipe.enable_model_cpu_offload()
             
