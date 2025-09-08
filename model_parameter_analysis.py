@@ -19,11 +19,7 @@ class ModelParameterAnalyzer:
         
     def count_parameters(self, model, model_name="Model"):
         """计算模型各层参数量"""
-        layer_stats = defaultdict(lambda: {
-            'parameters': 0,
-            'layers': 0,
-            'size_mb': 0.0
-        })
+        layer_stats = {}
         
         total_params = 0
         total_size_mb = 0.0
@@ -44,6 +40,14 @@ class ModelParameterAnalyzer:
                 if module_params > 0:
                     # 根据模块类型分类
                     layer_type = self._classify_layer_type(child, full_name)
+                    
+                    # 确保layer_type键存在
+                    if layer_type not in layer_stats:
+                        layer_stats[layer_type] = {
+                            'parameters': 0,
+                            'layers': 0,
+                            'size_mb': 0.0
+                        }
                     
                     layer_stats[layer_type]['parameters'] += module_params
                     layer_stats[layer_type]['layers'] += 1
