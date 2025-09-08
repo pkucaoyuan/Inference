@@ -272,38 +272,51 @@ class SimpleComfyUITester:
             progress_data['vae_decode_start'] = end_time - 2  # 假设VAE解码需要2秒
             progress_data['vae_decode_end'] = end_time
         
-        # 计算各阶段时间
+        # 计算各阶段时间 - 基于总时间进行合理估算
+        total_processing_time = end_time - start_time
+        
         if progress_data['text_encoding_start'] and progress_data['text_encoding_end']:
             progress_data['text_encoding_time'] = progress_data['text_encoding_end'] - progress_data['text_encoding_start']
         else:
-            # 如果没有记录到text encoding时间，使用估算值
-            progress_data['text_encoding_time'] = 0.5  # 假设0.5秒
+            # 基于总时间估算text encoding时间（通常占5-10%）
+            progress_data['text_encoding_time'] = total_processing_time * 0.08  # 假设8%
         
         if progress_data['unet_start'] and progress_data['unet_end']:
             progress_data['unet_time'] = progress_data['unet_end'] - progress_data['unet_start']
         else:
-            # 使用总处理时间作为UNet时间
-            progress_data['unet_time'] = end_time - start_time - 2  # 减去VAE时间
+            # 基于总时间估算UNet时间（通常占80-85%）
+            progress_data['unet_time'] = total_processing_time * 0.82  # 假设82%
         
         if progress_data['vae_decode_start'] and progress_data['vae_decode_end']:
             progress_data['vae_decode_time'] = progress_data['vae_decode_end'] - progress_data['vae_decode_start']
         else:
-            # 假设VAE解码需要2秒
-            progress_data['vae_decode_time'] = 2.0
+            # 基于总时间估算VAE解码时间（通常占10-15%）
+            progress_data['vae_decode_time'] = total_processing_time * 0.10  # 假设10%
+        
+        # 确保时间分配合理
+        if progress_data['text_encoding_time'] + progress_data['unet_time'] + progress_data['vae_decode_time'] > total_processing_time:
+            # 如果估算时间超过总时间，按比例缩放
+            scale_factor = total_processing_time / (progress_data['text_encoding_time'] + progress_data['unet_time'] + progress_data['vae_decode_time'])
+            progress_data['text_encoding_time'] *= scale_factor
+            progress_data['unet_time'] *= scale_factor
+            progress_data['vae_decode_time'] *= scale_factor
         
         # 计算attention总时间
         if progress_data['attention_times']:
             progress_data['total_attention_time'] = sum(progress_data['attention_times'])
             progress_data['avg_attention_time_per_step'] = sum(progress_data['attention_times']) / len(progress_data['attention_times'])
         else:
-            progress_data['total_attention_time'] = progress_data['unet_time'] * 0.3  # 假设30%
+            # 基于UNet时间估算attention时间（通常占30-40%）
+            progress_data['total_attention_time'] = progress_data['unet_time'] * 0.35  # 假设35%
             progress_data['avg_attention_time_per_step'] = progress_data['total_attention_time'] / max(progress_data['total_steps'], 1)
         
         # 计算其他层时间
-        if progress_data['unet_time'] and progress_data['total_attention_time']:
-            progress_data['other_layers_time'] = progress_data['unet_time'] - progress_data['total_attention_time']
-        else:
-            progress_data['other_layers_time'] = progress_data['unet_time'] * 0.7  # 假设70%
+        progress_data['other_layers_time'] = progress_data['unet_time'] - progress_data['total_attention_time']
+        
+        # 确保attention时间不超过UNet时间
+        if progress_data['total_attention_time'] > progress_data['unet_time']:
+            progress_data['total_attention_time'] = progress_data['unet_time'] * 0.35
+            progress_data['other_layers_time'] = progress_data['unet_time'] * 0.65
         
         print(f"推理阶段时间统计:")
         print(f"  - Text Encoding: {progress_data.get('text_encoding_time', 0):.2f}秒")
@@ -772,7 +785,7 @@ class SimpleComfyUITester:
                 print(f"  总推理时间: {result.get('total_inference_time', 0):.2f}秒")
                 print(f"  请求时间: {result.get('request_time', 0):.2f}秒")
                 print(f"  处理时间: {result.get('processing_time', 0):.2f}秒")
-                print(f"  GPU内存使用: {result.get('gpu_memory_used', 0):+.2f}GB")
+                print(f"  GPU内存使用: {result.get('gpu_memory_used', 0):.2f}GB")
                 print(f"  系统内存使用: {result.get('system_memory_used', 0):+.2f}GB")
                 print(f"  提示词: {result.get('prompt', 'N/A')[:50]}...")
             else:
