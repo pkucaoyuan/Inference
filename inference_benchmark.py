@@ -256,7 +256,6 @@ class InferenceBenchmark:
         # 测试所有模型
         flux_results = self.benchmark_flux()
         lumina_results = self.benchmark_lumina()
-        neta_results = self.benchmark_neta_lumina()
         
         # 只收集成功的结果
         self.results = []
@@ -264,8 +263,6 @@ class InferenceBenchmark:
             self.results.append(flux_results)
         if lumina_results:
             self.results.append(lumina_results)
-        if neta_results:
-            self.results.append(neta_results)
         
         if not self.results:
             print("错误: 所有模型测试都失败了，无法生成报告")
