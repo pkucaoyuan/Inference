@@ -33,30 +33,34 @@ class ModelParameterAnalyzer:
         for name, child in children:
                 full_name = f"{prefix}.{name}" if prefix else name
                 
-                # 计算当前模块参数
-                module_params = sum(p.numel() for p in child.parameters())
-                module_size_mb = sum(p.numel() * p.element_size() for p in child.parameters()) / (1024 * 1024)
+                # 检查是否为叶子节点（没有子模块）
+                has_children = len(list(child.named_children())) > 0
                 
-                if module_params > 0:
-                    # 根据模块类型分类
-                    layer_type = self._classify_layer_type(child, full_name)
+                if not has_children:
+                    # 只计算叶子节点的参数
+                    module_params = sum(p.numel() for p in child.parameters())
+                    module_size_mb = sum(p.numel() * p.element_size() for p in child.parameters()) / (1024 * 1024)
                     
-                    # 确保layer_type键存在
-                    if layer_type not in layer_stats:
-                        layer_stats[layer_type] = {
-                            'parameters': 0,
-                            'layers': 0,
-                            'size_mb': 0.0
-                        }
-                    
-                    layer_stats[layer_type]['parameters'] += module_params
-                    layer_stats[layer_type]['layers'] += 1
-                    layer_stats[layer_type]['size_mb'] += module_size_mb
-                    
-                    total_params += module_params
-                    total_size_mb += module_size_mb
-                    
-                    print(f"  {full_name}: {module_params:,} 参数 ({module_size_mb:.2f}MB) - {layer_type}")
+                    if module_params > 0:
+                        # 根据模块类型分类
+                        layer_type = self._classify_layer_type(child, full_name)
+                        
+                        # 确保layer_type键存在
+                        if layer_type not in layer_stats:
+                            layer_stats[layer_type] = {
+                                'parameters': 0,
+                                'layers': 0,
+                                'size_mb': 0.0
+                            }
+                        
+                        layer_stats[layer_type]['parameters'] += module_params
+                        layer_stats[layer_type]['layers'] += 1
+                        layer_stats[layer_type]['size_mb'] += module_size_mb
+                        
+                        total_params += module_params
+                        total_size_mb += module_size_mb
+                        
+                        print(f"  {full_name}: {module_params:,} 参数 ({module_size_mb:.2f}MB) - {layer_type}")
                 
                 # 递归分析子模块
                 analyze_module(child, full_name)
