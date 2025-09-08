@@ -65,9 +65,10 @@ class ModelParameterAnalyzer:
         analyze_module(model)
         
         # 添加总计
+        total_layers = sum(stats['layers'] for stats in layer_stats.values())
         layer_stats['总计'] = {
             'parameters': total_params,
-            'layers': sum(stats['layers'] for stats in layer_stats.values() if stats != layer_stats['总计']),
+            'layers': total_layers,
             'size_mb': total_size_mb
         }
         
