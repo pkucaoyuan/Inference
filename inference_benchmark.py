@@ -778,7 +778,7 @@ class InferenceBenchmark:
             pipe = FluxPipeline.from_pretrained(
                 "./FLUX.1-dev",
                 torch_dtype=torch.bfloat16,
-                device_map="auto"  # 使用自动设备映射
+                device_map="balanced"  # 使用平衡设备映射
             )
             
             # 预热模型，减少首次推理的延迟
@@ -819,7 +819,7 @@ class InferenceBenchmark:
             pipe = Lumina2Pipeline.from_pretrained(
                 "./Lumina-Image-2.0",
                 torch_dtype=torch.bfloat16,
-                device_map="auto"  # 使用自动设备映射，避免CPU卸载
+                device_map="balanced"  # 使用平衡设备映射，避免CPU卸载
             )
             # 移除CPU卸载，避免每次推理时的数据传输开销
             # pipe.enable_model_cpu_offload()
