@@ -61,28 +61,43 @@ class FluxInferenceTester:
                     print(f"✅ 使用GPU 0: {torch.cuda.get_device_name(0)}")
                     return device
             else:
-                print("❌ 未检测到CUDA，无法运行")
-                raise RuntimeError("CUDA不可用，无法运行GPU推理")
+                print("⚠️ 未检测到CUDA，使用CPU")
+                return "cpu"
         except Exception as e:
-            print(f"❌ 设备检测失败: {e}")
-            raise RuntimeError(f"GPU设备检测失败: {e}")
+            print(f"⚠️ 设备检测失败: {e}，使用CPU")
+            return "cpu"
     
     def load_model(self):
         """加载FLUX模型"""
         try:
             print("正在加载FLUX模型...")
-            # 只使用GPU加载
-            self.pipe = FluxPipeline.from_pretrained(
-                self.model_path,
-                torch_dtype=torch.float16,
-                device_map="auto"  # 使用auto让diffusers自动分配GPU
-            )
+            # 使用更兼容的device_map策略
+            if "cuda" in self.device:
+                self.pipe = FluxPipeline.from_pretrained(
+                    self.model_path,
+                    torch_dtype=torch.float16,
+                    device_map="balanced"  # 使用balanced策略
+                )
+            else:
+                self.pipe = FluxPipeline.from_pretrained(
+                    self.model_path,
+                    torch_dtype=torch.float32,  # CPU使用float32
+                    device_map="cpu"
+                )
             print("✅ FLUX模型加载成功")
         except Exception as e:
             print(f"❌ FLUX模型加载失败: {e}")
-            print("❌ 无法在GPU上加载模型，请检查GPU内存和CUDA环境")
-            self.pipe = None
-            raise RuntimeError(f"FLUX模型加载失败: {e}")
+            print("尝试使用CPU加载...")
+            try:
+                self.pipe = FluxPipeline.from_pretrained(
+                    self.model_path,
+                    torch_dtype=torch.float32,  # CPU使用float32
+                    device_map="cpu"
+                )
+                print("✅ FLUX模型在CPU上加载成功")
+            except Exception as e2:
+                print(f"❌ CPU加载也失败: {e2}")
+                self.pipe = None
     
     def get_gpu_memory(self):
         """获取当前GPU的内存使用量"""

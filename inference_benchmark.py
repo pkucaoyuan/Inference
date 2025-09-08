@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 实际推理基准测试脚本
-测量FLUX、Lumina和Neta Lumina的实际GPU推理时间
+测量FLUX和Lumina的实际GPU推理时间
 """
 
 import os
@@ -58,8 +58,7 @@ class InferenceBenchmark:
         # 根据官方推荐设置测试步数
         self.model_recommended_steps = {
             "FLUX": [50],               # FLUX官方示例使用50步
-            "Lumina": [30],             # Lumina默认30步
-            "Neta Lumina": [30]         # Neta Lumina推荐30步
+            "Lumina": [30]              # Lumina默认30步
         }
     
     def benchmark_flux(self) -> Dict:
@@ -84,66 +83,6 @@ class InferenceBenchmark:
         # 直接调用真实测试函数
         return self._real_lumina_benchmark()
     
-    def benchmark_neta_lumina(self) -> Dict:
-        """基准测试Neta Lumina模型"""
-        print("开始测试Neta Lumina模型...")
-        
-        # 检查Neta Lumina模型文件是否存在
-        neta_dir = Path("./Neta-Lumina")
-        if not neta_dir.exists():
-            print("Neta Lumina模型目录不存在，跳过测试")
-            return None
-        
-        # 检查Neta Lumina模型文件（支持新的all-in-one格式）
-        model_files = list(neta_dir.rglob("*.safetensors"))
-        workflow_file = neta_dir / "lumina_workflow.json"
-        readme_file = neta_dir / "README.md"
-        
-        if not model_files and not workflow_file.exists():
-            print("Neta Lumina模型文件不完整，跳过测试")
-            print("请下载完整的Neta Lumina模型文件:")
-            print("1. 下载 neta-lumina-v1.0-all-in-one.safetensors")
-            print("2. 或下载分离的组件文件到对应目录")
-            return None
-        
-        print(f"找到 {len(model_files)} 个模型文件")
-        
-        # 尝试加载Neta Lumina
-        print("尝试加载Neta Lumina模型...")
-        try:
-            # 尝试使用Lumina2Pipeline加载（可能失败）
-            from diffusers import Lumina2Pipeline
-            
-            pipe = Lumina2Pipeline.from_pretrained(
-                "./Neta-Lumina",
-                torch_dtype=torch.bfloat16
-            )
-            pipe.enable_model_cpu_offload()
-            
-            results = []
-            for prompt in self.test_prompts:
-                for size in self.test_sizes:
-                    for steps in self.model_recommended_steps["Neta Lumina"]:
-                        result = self._benchmark_single_inference(
-                            pipe, prompt, size, steps, "Neta Lumina"
-                        )
-                        results.append(result)
-            
-            return {
-                'model': 'Neta Lumina (Real Test)',
-                'results': results,
-                'avg_time': np.mean([r['inference_time'] for r in results]),
-                'avg_memory': np.mean([r['gpu_memory'] for r in results])
-            }
-            
-        except Exception as e:
-            print(f"Neta Lumina加载失败: {e}")
-            print("Neta Lumina使用ComfyUI格式，无法直接用diffusers加载")
-            print("解决方案:")
-            print("1. 运行 python neta_lumina_loader.py 查看详细分析")
-            print("2. 使用ComfyUI环境运行")
-            print("3. 等待官方diffusers支持")
-            return None
     
     def _benchmark_single_inference(self, pipe, prompt: str, size: Tuple[int, int], 
                                   steps: int, model_name: str) -> Dict:
@@ -178,18 +117,6 @@ class InferenceBenchmark:
                     num_inference_steps=steps,
                     guidance_scale=4.0,
                     cfg_trunc_ratio=1.0,  # 官方默认值
-                    cfg_normalization=True,
-                    max_sequence_length=256
-                ).images[0]
-            elif model_name == "Neta Lumina":
-                # Neta Lumina官方推荐参数
-                image = pipe(
-                    prompt,
-                    height=size[0],
-                    width=size[1],
-                    num_inference_steps=steps,
-                    guidance_scale=4.0,  # 使用推荐范围下限
-                    cfg_trunc_ratio=1.0,
                     cfg_normalization=True,
                     max_sequence_length=256
                 ).images[0]
