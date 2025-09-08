@@ -192,15 +192,17 @@ class InferenceBenchmark:
             
             def text_encoder_hook(module, input, output):
                 nonlocal text_encoding_start, text_encoding_end
+                current_time = time.time()
                 if text_encoding_start == 0:
-                    text_encoding_start = time.time()
-                text_encoding_end = time.time()
+                    text_encoding_start = current_time
+                text_encoding_end = current_time
             
             def unet_hook(module, input, output):
                 nonlocal unet_start, unet_end
+                current_time = time.time()
                 if unet_start == 0:
-                    unet_start = time.time()
-                unet_end = time.time()
+                    unet_start = current_time
+                unet_end = current_time
             
             def attention_hook(module, input, output):
                 start_time = time.time()
@@ -220,9 +222,10 @@ class InferenceBenchmark:
             
             def vae_hook(module, input, output):
                 nonlocal vae_decode_start, vae_decode_end
+                current_time = time.time()
                 if vae_decode_start == 0:
-                    vae_decode_start = time.time()
-                vae_decode_end = time.time()
+                    vae_decode_start = current_time
+                vae_decode_end = current_time
             
             # 注册Hook
             print("开始注册Hook...")
@@ -387,6 +390,9 @@ class InferenceBenchmark:
             
             print(f"Hook测量结果:")
             print(f"  - 总推理时间: {total_time:.3f}秒")
+            print(f"  - Text Encoding时间范围: {text_encoding_start:.3f} -> {text_encoding_end:.3f}")
+            print(f"  - UNet时间范围: {unet_start:.3f} -> {unet_end:.3f}")
+            print(f"  - VAE时间范围: {vae_decode_start:.3f} -> {vae_decode_end:.3f}")
             print(f"  - Attention调用次数: {len(attention_times)}")
             print(f"  - 其他层调用次数: {len(other_layer_times)}")
             
@@ -411,21 +417,24 @@ class InferenceBenchmark:
                 layer_times['vae_decode_time'] = vae_decode_end - vae_decode_start
                 print(f"  ✅ VAE实际测量: {layer_times['vae_decode_time']:.3f}秒")
             else:
-                # 如果VAE Hook没有捕获到时间，使用总时间减去其他时间
-                remaining_time = total_time - layer_times['text_encoding_time'] - layer_times['unet_time']
-                if remaining_time > 0:
-                    layer_times['vae_decode_time'] = remaining_time
-                    print(f"  🔧 VAE时间计算: {layer_times['vae_decode_time']:.3f}秒 (总时间减去其他时间)")
-                else:
-                    layer_times['vae_decode_time'] = total_time * 0.07
-                    print(f"  ⚠️ VAE使用估算: {layer_times['vae_decode_time']:.3f}秒")
+                # 如果VAE Hook没有捕获到时间，使用估算
+                layer_times['vae_decode_time'] = total_time * 0.07
+                print(f"  ⚠️ VAE使用估算: {layer_times['vae_decode_time']:.3f}秒")
             
             # 验证时间计算一致性
             calculated_total = layer_times['text_encoding_time'] + layer_times['unet_time'] + layer_times['vae_decode_time']
             time_diff = abs(total_time - calculated_total)
             
+            # 显示时间分布分析
+            print(f"  📊 时间分布分析:")
+            print(f"    - Text Encoding: {layer_times['text_encoding_time']:.3f}秒 ({layer_times['text_encoding_time']/total_time*100:.1f}%)")
+            print(f"    - UNet: {layer_times['unet_time']:.3f}秒 ({layer_times['unet_time']/total_time*100:.1f}%)")
+            print(f"    - VAE: {layer_times['vae_decode_time']:.3f}秒 ({layer_times['vae_decode_time']/total_time*100:.1f}%)")
+            print(f"    - 其他时间: {total_time - calculated_total:.3f}秒 ({(total_time - calculated_total)/total_time*100:.1f}%)")
+            
             if time_diff > 0.1:  # 如果差异超过0.1秒
                 print(f"  ⚠️ 时间计算不一致: 总时间{total_time:.3f}秒 vs 计算时间{calculated_total:.3f}秒 (差异{time_diff:.3f}秒)")
+                print(f"  💡 差异可能来自: 模型初始化、内存管理、其他开销")
                 # 使用实际测量的总时间
                 layer_times['total_inference_time'] = total_time
             else:
