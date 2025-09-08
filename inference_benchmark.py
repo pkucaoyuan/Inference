@@ -102,12 +102,12 @@ class InferenceBenchmark:
             if layer_times is None:
                 raise Exception("实际测量失败")
             
-            # 计算总推理时间
-            total_inference_time = sum([
+            # 使用实际测量的总推理时间
+            total_inference_time = layer_times.get('total_inference_time', sum([
                 layer_times.get('text_encoding_time', 0),
                 layer_times.get('unet_time', 0),
                 layer_times.get('vae_decode_time', 0)
-            ])
+            ]))
             
             print(f"推理完成，总耗时: {total_inference_time:.2f}秒")
             print(f"  - Text Encoding: {layer_times.get('text_encoding_time', 0):.2f}秒")
@@ -354,6 +354,7 @@ class InferenceBenchmark:
             print(f"  - VAE: {vae_decode_start:.3f} -> {vae_decode_end:.3f}")
             print(f"  - Attention调用次数: {len(attention_times)}")
             print(f"  - 其他层调用次数: {len(other_layer_times)}")
+            print(f"  - 总推理时间: {total_time:.3f}秒")
             
             # 计算Text Encoding时间
             if text_encoding_start > 0 and text_encoding_end > 0:
@@ -378,6 +379,17 @@ class InferenceBenchmark:
             else:
                 layer_times['vae_decode_time'] = total_time * 0.07
                 print(f"  ⚠️ VAE使用估算: {layer_times['vae_decode_time']:.3f}秒")
+            
+            # 验证时间计算一致性
+            calculated_total = layer_times['text_encoding_time'] + layer_times['unet_time'] + layer_times['vae_decode_time']
+            time_diff = abs(total_time - calculated_total)
+            if time_diff > 0.1:  # 如果差异超过0.1秒
+                print(f"  ⚠️ 时间计算不一致: 总时间{total_time:.3f}秒 vs 计算时间{calculated_total:.3f}秒 (差异{time_diff:.3f}秒)")
+                # 使用实际测量的总时间
+                layer_times['total_inference_time'] = total_time
+            else:
+                layer_times['total_inference_time'] = calculated_total
+                print(f"  ✅ 时间计算一致: {calculated_total:.3f}秒")
             
             # 计算Attention和其他层时间
             if attention_times:
@@ -978,8 +990,20 @@ class InferenceBenchmark:
         """生成JSON数据"""
         json_path = report_dir / "benchmark_data.json"
         
+        # 创建可序列化的结果副本，移除PIL Image对象
+        serializable_results = []
+        for result in self.results:
+            serializable_result = result.copy()
+            # 移除PIL Image对象
+            if 'image' in serializable_result:
+                del serializable_result['image']
+            # 移除layer_times中的image
+            if 'layer_times' in serializable_result and 'image' in serializable_result['layer_times']:
+                del serializable_result['layer_times']['image']
+            serializable_results.append(serializable_result)
+        
         with open(json_path, 'w', encoding='utf-8') as f:
-            json.dump(self.results, f, indent=2, ensure_ascii=False)
+            json.dump(serializable_results, f, indent=2, ensure_ascii=False)
 
 def main():
     """主函数"""
