@@ -82,8 +82,13 @@ class ModelParameterAnalyzer:
         """根据模块类型和名称分类层"""
         module_type = type(module).__name__
         
-        # Attention相关
-        if any(keyword in module_type.lower() for keyword in ['attention', 'attn', 'self_attn', 'cross_attn']):
+        # Attention相关 - 更全面的识别
+        attention_keywords = ['attention', 'attn', 'self_attn', 'cross_attn', 'multihead', 'mha', 'qkv', 'query', 'key', 'value']
+        if any(keyword in module_type.lower() for keyword in attention_keywords):
+            return "Attention层"
+        
+        # 检查模块名称中是否包含attention相关关键词
+        if any(keyword in full_name.lower() for keyword in attention_keywords):
             return "Attention层"
         
         # 线性层
