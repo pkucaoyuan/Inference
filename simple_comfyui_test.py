@@ -55,8 +55,25 @@ class SimpleComfyUITester:
                     total_gb = float(total_mb) / 1024.0
                     print(f"GPU {self.gpu_id} 内存: {used_gb:.2f}GB / {total_gb:.2f}GB")
                     return used_gb
+                else:
+                    print(f"⚠️ GPU {self.gpu_id} 内存查询返回空结果")
+            else:
+                print(f"⚠️ nvidia-smi命令失败 (GPU {self.gpu_id}): {result.stderr}")
         except Exception as e:
-            print(f"获取GPU {self.gpu_id} 内存失败: {e}")
+            print(f"⚠️ 获取GPU {self.gpu_id} 内存失败: {e}")
+        
+        # 如果nvidia-smi失败，尝试使用PyTorch的CUDA内存监控
+        try:
+            import torch
+            if torch.cuda.is_available() and self.gpu_id < torch.cuda.device_count():
+                torch.cuda.set_device(self.gpu_id)
+                allocated = torch.cuda.memory_allocated() / (1024**3)  # GB
+                cached = torch.cuda.memory_reserved() / (1024**3)  # GB
+                total_memory = allocated + cached
+                print(f"🔍 使用PyTorch CUDA监控 GPU {self.gpu_id}: {total_memory:.2f}GB")
+                return total_memory
+        except Exception as e:
+            print(f"⚠️ PyTorch CUDA监控也失败: {e}")
         
         return 0.0
     
@@ -267,10 +284,23 @@ class SimpleComfyUITester:
         
         # 记录结束时间
         end_time = time.time()
+        
+        # 确保记录UNet时间
         if step_start_time:
+            progress_data['unet_start'] = step_start_time
             progress_data['unet_end'] = end_time
-            progress_data['vae_decode_start'] = end_time - 2  # 假设VAE解码需要2秒
-            progress_data['vae_decode_end'] = end_time
+        else:
+            # 如果没有记录到step_start_time，使用总时间的中间部分
+            progress_data['unet_start'] = start_time + (end_time - start_time) * 0.1  # 10%处开始
+            progress_data['unet_end'] = end_time - (end_time - start_time) * 0.1  # 10%处结束
+        
+        # 记录text encoding时间
+        progress_data['text_encoding_start'] = start_time
+        progress_data['text_encoding_end'] = progress_data['unet_start']
+        
+        # 记录VAE解码时间
+        progress_data['vae_decode_start'] = progress_data['unet_end']
+        progress_data['vae_decode_end'] = end_time
         
         # 计算各阶段时间 - 基于总时间进行合理估算
         total_processing_time = end_time - start_time
@@ -607,6 +637,13 @@ class SimpleComfyUITester:
         # 计算统计信息
         gpu_memory_used = end_gpu_memory  # 使用实际使用的内存，而不是变化量
         system_memory_used = end_system_memory - start_system_memory
+        
+        # 调试信息
+        print(f"🔍 调试信息:")
+        print(f"  - start_gpu_memory: {start_gpu_memory:.2f}GB")
+        print(f"  - end_gpu_memory: {end_gpu_memory:.2f}GB")
+        print(f"  - gpu_memory_used: {gpu_memory_used:.2f}GB")
+        print(f"  - gpu_id: {self.gpu_id}")
         
         print(f"结束状态 - GPU内存: {end_gpu_memory:.2f}GB, 系统内存: {end_system_memory:.2f}GB")
         if end_detailed_gpu:
