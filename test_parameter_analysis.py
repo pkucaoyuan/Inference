@@ -28,8 +28,15 @@ def classify_layer_type(module, full_name):
         return "归一化层"
     
     # 激活函数
-    if isinstance(module, (nn.ReLU, nn.GELU, nn.SiLU, nn.Swish)):
+    if isinstance(module, (nn.ReLU, nn.GELU, nn.SiLU)):
         return "激活函数"
+    
+    # 检查Swish激活函数（可能不存在于某些PyTorch版本）
+    try:
+        if isinstance(module, nn.Swish):
+            return "激活函数"
+    except AttributeError:
+        pass
     
     # 嵌入层
     if isinstance(module, (nn.Embedding, nn.EmbeddingBag)):
