@@ -44,12 +44,21 @@ class InferenceBenchmark:
         print(f"使用设备: {self.device}")
         print(f"统一输出目录: {self.output_dir}")
         
-        # 测试配置
-        self.test_prompts = [
+        # 测试配置 - 增加实验次数
+        self.base_test_prompts = [
             "A beautiful landscape with mountains and lakes, photorealistic",
             "A futuristic city with flying cars, cyberpunk style",
             "A cute anime character in a magical garden, detailed"
         ]
+        
+        # 每个提示词重复3次
+        self.test_prompts = []
+        for i, prompt in enumerate(self.base_test_prompts):
+            for repeat in range(3):
+                self.test_prompts.append({
+                    'prompt': prompt,
+                    'test_id': f"{i+1}_{repeat+1}"
+                })
         
         self.test_sizes = [
             (1024, 1024)  # 只测试1024尺寸
@@ -85,7 +94,7 @@ class InferenceBenchmark:
     
     
     def _benchmark_single_inference(self, pipe, prompt: str, size: Tuple[int, int], 
-                                  steps: int, model_name: str) -> Dict:
+                                  steps: int, model_name: str, test_id: str = None) -> Dict:
         """单次推理基准测试"""
         # 清理GPU内存
         if torch.cuda.is_available():
@@ -129,6 +138,7 @@ class InferenceBenchmark:
             end_time = time.time()
             
             return {
+                'test_id': test_id,
                 'prompt': prompt,
                 'size': size,
                 'steps': steps,
@@ -143,6 +153,7 @@ class InferenceBenchmark:
             end_time = time.time()
             print(f"推理失败: {e}")
             return {
+                'test_id': test_id,
                 'prompt': prompt,
                 'size': size,
                 'steps': steps,
@@ -790,11 +801,13 @@ class InferenceBenchmark:
             print("模型预热完成")
             
             results = []
-            for prompt in self.test_prompts:
+            for prompt_config in self.test_prompts:
+                prompt = prompt_config['prompt']
+                test_id = prompt_config['test_id']
                 for size in self.test_sizes:
                     for steps in self.model_recommended_steps["FLUX"]:
                         result = self._benchmark_single_inference(
-                            pipe, prompt, size, steps, "FLUX"
+                            pipe, prompt, size, steps, "FLUX", test_id
                         )
                         results.append(result)
             
@@ -838,11 +851,13 @@ class InferenceBenchmark:
             print("模型预热完成")
             
             results = []
-            for prompt in self.test_prompts:
+            for prompt_config in self.test_prompts:
+                prompt = prompt_config['prompt']
+                test_id = prompt_config['test_id']
                 for size in self.test_sizes:
                     for steps in self.model_recommended_steps["Lumina"]:
                         result = self._benchmark_single_inference(
-                            pipe, prompt, size, steps, "Lumina"
+                            pipe, prompt, size, steps, "Lumina", test_id
                         )
                         results.append(result)
             
@@ -946,7 +961,20 @@ class InferenceBenchmark:
             
             for result in self.results:
                 f.write(f"模型: {result['model']}\n")
-                f.write(f"平均推理时间: {result['avg_time']:.2f}秒\n")
+                
+                # 计算时间方差
+                inference_times = [r['inference_time'] for r in result['results'] if r.get('success', False)]
+                if len(inference_times) > 1:
+                    mean_time = np.mean(inference_times)
+                    variance = np.var(inference_times, ddof=1)  # 样本方差
+                    std_dev = np.std(inference_times, ddof=1)  # 样本标准差
+                    min_time = np.min(inference_times)
+                    max_time = np.max(inference_times)
+                    
+                    f.write(f"平均推理时间: {mean_time:.2f}秒 (方差: {variance:.4f}, 标准差: {std_dev:.4f})\n")
+                    f.write(f"推理时间范围: {min_time:.2f}秒 - {max_time:.2f}秒\n")
+                else:
+                    f.write(f"平均推理时间: {result['avg_time']:.2f}秒\n")
                 
                 # 添加层时间统计
                 if 'avg_layer_times' in result and result['avg_layer_times']:
@@ -964,6 +992,8 @@ class InferenceBenchmark:
                 
                 # 详细结果
                 for r in result['results']:
+                    test_id = r.get('test_id', '未知')
+                    f.write(f"  测试ID: {test_id}\n")
                     f.write(f"  提示词: {r['prompt'][:50]}...\n")
                     f.write(f"  尺寸: {r['size']}\n")
                     f.write(f"  步数: {r['steps']}\n")
