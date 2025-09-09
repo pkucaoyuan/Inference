@@ -596,7 +596,7 @@ class SimpleComfyUITester:
             print(f"❌ 从输出目录获取图片失败: {e}")
             return None
     
-    def run_inference_test(self, prompt, negative_prompt="", steps=30, cfg=4.0):
+    def run_inference_test(self, prompt, negative_prompt="", steps=30, cfg=4.0, test_id=None):
         """运行推理测试"""
         print(f"\n开始推理测试...")
         print(f"提示词: {prompt}")
@@ -670,6 +670,7 @@ class SimpleComfyUITester:
             print(f"GPU利用率: {end_detailed_gpu.get('utilization_percent', 0):.1f}%")
         
         result = {
+            'test_id': test_id,
             'prompt': prompt,
             'negative_prompt': negative_prompt,
             'steps': steps,
@@ -713,7 +714,8 @@ class SimpleComfyUITester:
     
     def run_batch_tests(self):
         """运行批量测试"""
-        test_configs = [
+        # 增加实验次数，每个配置运行3次
+        base_configs = [
             {
                 "prompt": "A beautiful anime character in a magical garden, detailed, high quality",
                 "negative_prompt": "",
@@ -734,6 +736,14 @@ class SimpleComfyUITester:
             }
         ]
         
+        # 每个配置重复3次
+        test_configs = []
+        for i, config in enumerate(base_configs):
+            for repeat in range(3):
+                test_config = config.copy()
+                test_config['test_id'] = f"{i+1}_{repeat+1}"
+                test_configs.append(test_config)
+        
         print("简化ComfyUI Neta Lumina批量推理测试")
         print("=" * 50)
         
@@ -746,13 +756,14 @@ class SimpleComfyUITester:
         
         # 运行测试
         for i, config in enumerate(test_configs, 1):
-            print(f"\n测试 {i}/{len(test_configs)}")
+            test_id = config.get('test_id', f'测试{i}')
+            print(f"\n{test_id} ({i}/{len(test_configs)})")
             result = self.run_inference_test(**config)
             if result:
                 self.results.append(result)
-                print(f"✅ 测试 {i} 完成")
+                print(f"✅ {test_id} 完成")
             else:
-                print(f"❌ 测试 {i} 失败")
+                print(f"❌ {test_id} 失败")
         
         return self.results
     
@@ -794,14 +805,35 @@ class SimpleComfyUITester:
         
         if successful_tests > 0:
             # 基本性能统计
-            avg_total_time = sum(r.get('total_inference_time', 0) for r in self.results if r) / successful_tests
-            avg_request_time = sum(r.get('request_time', 0) for r in self.results if r) / successful_tests
-            avg_processing_time = sum(r.get('processing_time', 0) for r in self.results if r) / successful_tests
+            total_times = [r.get('total_inference_time', 0) for r in self.results if r]
+            request_times = [r.get('request_time', 0) for r in self.results if r]
+            processing_times = [r.get('processing_time', 0) for r in self.results if r]
+            
+            avg_total_time = sum(total_times) / successful_tests
+            avg_request_time = sum(request_times) / successful_tests
+            avg_processing_time = sum(processing_times) / successful_tests
+            
+            # 计算时间方差
+            def calculate_variance(times):
+                if len(times) <= 1:
+                    return 0.0
+                mean = sum(times) / len(times)
+                variance = sum((x - mean) ** 2 for x in times) / (len(times) - 1)
+                return variance
+            
+            total_time_variance = calculate_variance(total_times)
+            request_time_variance = calculate_variance(request_times)
+            processing_time_variance = calculate_variance(processing_times)
             
             print(f"\n时间统计:")
-            print(f"  平均总推理时间: {avg_total_time:.2f}秒")
-            print(f"  平均请求时间: {avg_request_time:.2f}秒")
-            print(f"  平均处理时间: {avg_processing_time:.2f}秒")
+            print(f"  平均总推理时间: {avg_total_time:.2f}秒 (方差: {total_time_variance:.4f})")
+            print(f"  平均请求时间: {avg_request_time:.2f}秒 (方差: {request_time_variance:.4f})")
+            print(f"  平均处理时间: {avg_processing_time:.2f}秒 (方差: {processing_time_variance:.4f})")
+            
+            # 时间范围统计
+            min_total_time = min(total_times)
+            max_total_time = max(total_times)
+            print(f"  总推理时间范围: {min_total_time:.2f}秒 - {max_total_time:.2f}秒")
             
             # 内存统计
             avg_gpu_memory = sum(r.get('gpu_memory_used', 0) for r in self.results if r) / successful_tests
@@ -834,11 +866,29 @@ class SimpleComfyUITester:
             if gpu_utilizations:
                 avg_gpu_util = sum(gpu_utilizations) / len(gpu_utilizations)
                 print(f"\nGPU利用率: {avg_gpu_util:.1f}%")
+            
+            # 按配置分组统计
+            print(f"\n按配置分组统计:")
+            config_groups = {}
+            for result in self.results:
+                if result and 'test_id' in result:
+                    config_id = result['test_id'].split('_')[0]  # 获取配置ID
+                    if config_id not in config_groups:
+                        config_groups[config_id] = []
+                    config_groups[config_id].append(result)
+            
+            for config_id, group_results in config_groups.items():
+                if group_results:
+                    group_times = [r.get('total_inference_time', 0) for r in group_results]
+                    avg_time = sum(group_times) / len(group_times)
+                    group_variance = calculate_variance(group_times)
+                    print(f"  配置 {config_id}: 平均时间 {avg_time:.2f}秒 (方差: {group_variance:.4f})")
         
         print("\n详细结果:")
         for i, result in enumerate(self.results, 1):
             if result:
-                print(f"测试 {i}:")
+                test_id = result.get('test_id', f'测试{i}')
+                print(f"{test_id}:")
                 print(f"  总推理时间: {result.get('total_inference_time', 0):.2f}秒")
                 print(f"  请求时间: {result.get('request_time', 0):.2f}秒")
                 print(f"  处理时间: {result.get('processing_time', 0):.2f}秒")
