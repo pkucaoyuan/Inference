@@ -50,36 +50,55 @@ class InferenceBenchmark:
             "A beautiful landscape with mountains and lakes, photorealistic",
             "A serene beach at sunset with palm trees, cinematic lighting",
             "A snowy mountain peak with aurora borealis, dramatic sky",
+            "A misty forest with ancient trees, ethereal atmosphere",
+            "A desert oasis with palm trees, golden hour lighting",
             
             # 城市建筑类
             "A futuristic city with flying cars, cyberpunk style, neon lights",
             "A medieval castle on a hill, fantasy art style",
             "Modern architecture glass building, minimalist design",
+            "A bustling Asian street market, vibrant colors",
+            "A Gothic cathedral interior, dramatic lighting",
             
             # 人物角色类
             "A cute anime character in a magical garden, detailed",
             "Portrait of a wise old wizard, fantasy art",
             "A professional businesswoman in a modern office",
+            "A samurai warrior in traditional armor, historical art",
+            "A space explorer in futuristic suit, sci-fi art",
             
             # 动物类
             "A majestic lion in the African savanna, wildlife photography",
             "A colorful parrot in a tropical rainforest, nature photography",
             "A cute cat sitting on a windowsill, soft lighting",
+            "A graceful dolphin jumping out of ocean waves",
+            "A majestic eagle soaring over mountain peaks",
             
             # 抽象艺术类
             "Abstract geometric patterns, modern art style",
             "A dreamy underwater scene with jellyfish, ethereal lighting",
-            "A steampunk mechanical contraption, industrial design"
+            "A steampunk mechanical contraption, industrial design",
+            "A cosmic nebula with swirling colors, space art",
+            "A surreal dreamscape with floating islands, fantasy art",
+            
+            # 食物类
+            "A delicious chocolate cake with berries, food photography",
+            "A steaming bowl of ramen noodles, Japanese cuisine",
+            "Fresh fruits arranged artistically, still life photography",
+            
+            # 交通工具类
+            "A vintage red sports car on a winding mountain road",
+            "A steam locomotive crossing a bridge, vintage photography",
+            "A sleek spaceship in orbit around a planet, sci-fi art"
         ]
         
-        # 每个提示词重复2次（减少重复，增加多样性）
+        # 每个提示词只测试一次，增加更多不同提示词
         self.test_prompts = []
         for i, prompt in enumerate(self.base_test_prompts):
-            for repeat in range(2):
-                self.test_prompts.append({
-                    'prompt': prompt,
-                    'test_id': f"{i+1}_{repeat+1}"
-                })
+            self.test_prompts.append({
+                'prompt': prompt,
+                'test_id': f"{i+1}"
+            })
         
         self.test_sizes = [
             (1024, 1024)  # 只测试1024尺寸

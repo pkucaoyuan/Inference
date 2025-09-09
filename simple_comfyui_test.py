@@ -735,6 +735,18 @@ class SimpleComfyUITester:
                 "steps": 30,
                 "cfg": 5.0
             },
+            {
+                "prompt": "A misty forest with ancient trees, ethereal atmosphere",
+                "negative_prompt": "clear, bright, artificial",
+                "steps": 30,
+                "cfg": 4.5
+            },
+            {
+                "prompt": "A desert oasis with palm trees, golden hour lighting",
+                "negative_prompt": "dark, cold, artificial",
+                "steps": 30,
+                "cfg": 4.0
+            },
             
             # 城市建筑类
             {
@@ -754,6 +766,18 @@ class SimpleComfyUITester:
                 "negative_prompt": "ornate, decorative, blurry",
                 "steps": 30,
                 "cfg": 4.0
+            },
+            {
+                "prompt": "A bustling Asian street market, vibrant colors",
+                "negative_prompt": "empty, dark, blurry",
+                "steps": 30,
+                "cfg": 4.5
+            },
+            {
+                "prompt": "A Gothic cathedral interior, dramatic lighting",
+                "negative_prompt": "modern, bright, blurry",
+                "steps": 30,
+                "cfg": 5.0
             },
             
             # 人物角色类
@@ -775,6 +799,18 @@ class SimpleComfyUITester:
                 "steps": 30,
                 "cfg": 4.0
             },
+            {
+                "prompt": "A samurai warrior in traditional armor, historical art",
+                "negative_prompt": "modern, casual, blurry",
+                "steps": 30,
+                "cfg": 4.5
+            },
+            {
+                "prompt": "A space explorer in futuristic suit, sci-fi art",
+                "negative_prompt": "medieval, historical, blurry",
+                "steps": 30,
+                "cfg": 5.0
+            },
             
             # 动物类
             {
@@ -792,6 +828,18 @@ class SimpleComfyUITester:
             {
                 "prompt": "A cute cat sitting on a windowsill, soft lighting",
                 "negative_prompt": "blurry, low quality, harsh lighting",
+                "steps": 30,
+                "cfg": 4.5
+            },
+            {
+                "prompt": "A graceful dolphin jumping out of ocean waves",
+                "negative_prompt": "blurry, low quality, artificial",
+                "steps": 30,
+                "cfg": 4.0
+            },
+            {
+                "prompt": "A majestic eagle soaring over mountain peaks",
+                "negative_prompt": "blurry, low quality, caged",
                 "steps": 30,
                 "cfg": 4.5
             },
@@ -814,16 +862,67 @@ class SimpleComfyUITester:
                 "negative_prompt": "modern, digital, blurry",
                 "steps": 30,
                 "cfg": 5.0
+            },
+            {
+                "prompt": "A cosmic nebula with swirling colors, space art",
+                "negative_prompt": "earthly, terrestrial, blurry",
+                "steps": 30,
+                "cfg": 4.5
+            },
+            {
+                "prompt": "A surreal dreamscape with floating islands, fantasy art",
+                "negative_prompt": "realistic, grounded, blurry",
+                "steps": 30,
+                "cfg": 5.0
+            },
+            
+            # 食物类
+            {
+                "prompt": "A delicious chocolate cake with berries, food photography",
+                "negative_prompt": "burnt, spoiled, blurry",
+                "steps": 30,
+                "cfg": 4.0
+            },
+            {
+                "prompt": "A steaming bowl of ramen noodles, Japanese cuisine",
+                "negative_prompt": "cold, spoiled, blurry",
+                "steps": 30,
+                "cfg": 4.5
+            },
+            {
+                "prompt": "Fresh fruits arranged artistically, still life photography",
+                "negative_prompt": "rotten, artificial, blurry",
+                "steps": 30,
+                "cfg": 4.0
+            },
+            
+            # 交通工具类
+            {
+                "prompt": "A vintage red sports car on a winding mountain road",
+                "negative_prompt": "modern, damaged, blurry",
+                "steps": 30,
+                "cfg": 4.5
+            },
+            {
+                "prompt": "A steam locomotive crossing a bridge, vintage photography",
+                "negative_prompt": "modern, electric, blurry",
+                "steps": 30,
+                "cfg": 5.0
+            },
+            {
+                "prompt": "A sleek spaceship in orbit around a planet, sci-fi art",
+                "negative_prompt": "earthly, primitive, blurry",
+                "steps": 30,
+                "cfg": 4.5
             }
         ]
         
-        # 每个配置重复2次（减少重复，增加多样性）
+        # 每个配置只测试一次，增加更多不同提示词
         test_configs = []
         for i, config in enumerate(base_configs):
-            for repeat in range(2):
-                test_config = config.copy()
-                test_config['test_id'] = f"{i+1}_{repeat+1}"
-                test_configs.append(test_config)
+            test_config = config.copy()
+            test_config['test_id'] = f"{i+1}"
+            test_configs.append(test_config)
         
         print("简化ComfyUI Neta Lumina批量推理测试")
         print("=" * 50)
