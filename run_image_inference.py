@@ -11,7 +11,6 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent))
 
 from inference_benchmark import InferenceBenchmark
-from image_organizer import ImageOrganizer
 
 def check_dependencies():
     """检查依赖库"""
@@ -107,16 +106,10 @@ def main():
     if results:
         print(f"\n✅ 测试完成，共生成 {len(results)} 个结果")
         
-        # 整理图片
-        print("\n开始整理图片...")
-        organizer = ImageOrganizer()
-        organizer.organize_all()
-        
         print("\n🎉 所有测试完成！")
         print("📁 查看生成的图片和报告:")
-        print("   - 图片目录: output_images/")
-        print("   - 报告文件: benchmark_report/")
-        print("   - 整理后的图片: output_images/organized/")
+        print("   - 图片目录: unified_output_*/")
+        print("   - 报告文件: benchmark_report_*/")
     else:
         print("❌ 测试失败")
 
