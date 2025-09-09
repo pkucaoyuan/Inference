@@ -714,32 +714,113 @@ class SimpleComfyUITester:
     
     def run_batch_tests(self):
         """运行批量测试"""
-        # 增加实验次数，每个配置运行3次
+        # 参考Hugging Face示例的多样化提示词配置
         base_configs = [
+            # 风景类
             {
-                "prompt": "A beautiful anime character in a magical garden, detailed, high quality",
-                "negative_prompt": "",
+                "prompt": "A beautiful landscape with mountains and lakes, photorealistic",
+                "negative_prompt": "blurry, low quality, distorted",
                 "steps": 30,
                 "cfg": 4.0
             },
             {
-                "prompt": "A futuristic city with flying cars, cyberpunk style, anime",
+                "prompt": "A serene beach at sunset with palm trees, cinematic lighting",
+                "negative_prompt": "dark, gloomy, overexposed",
+                "steps": 30,
+                "cfg": 4.5
+            },
+            {
+                "prompt": "A snowy mountain peak with aurora borealis, dramatic sky",
                 "negative_prompt": "blurry, low quality",
                 "steps": 30,
                 "cfg": 5.0
             },
+            
+            # 城市建筑类
             {
-                "prompt": "A cute cat in a cozy room, warm lighting, detailed",
-                "negative_prompt": "",
+                "prompt": "A futuristic city with flying cars, cyberpunk style, neon lights",
+                "negative_prompt": "blurry, low quality, dark",
                 "steps": 30,
-                "cfg": 5.5
+                "cfg": 5.0
+            },
+            {
+                "prompt": "A medieval castle on a hill, fantasy art style",
+                "negative_prompt": "modern, contemporary, blurry",
+                "steps": 30,
+                "cfg": 4.5
+            },
+            {
+                "prompt": "Modern architecture glass building, minimalist design",
+                "negative_prompt": "ornate, decorative, blurry",
+                "steps": 30,
+                "cfg": 4.0
+            },
+            
+            # 人物角色类
+            {
+                "prompt": "A cute anime character in a magical garden, detailed, high quality",
+                "negative_prompt": "blurry, low quality, distorted",
+                "steps": 30,
+                "cfg": 4.0
+            },
+            {
+                "prompt": "Portrait of a wise old wizard, fantasy art",
+                "negative_prompt": "modern, contemporary, blurry",
+                "steps": 30,
+                "cfg": 4.5
+            },
+            {
+                "prompt": "A professional businesswoman in a modern office",
+                "negative_prompt": "casual, informal, blurry",
+                "steps": 30,
+                "cfg": 4.0
+            },
+            
+            # 动物类
+            {
+                "prompt": "A majestic lion in the African savanna, wildlife photography",
+                "negative_prompt": "blurry, low quality, cartoon",
+                "steps": 30,
+                "cfg": 4.5
+            },
+            {
+                "prompt": "A colorful parrot in a tropical rainforest, nature photography",
+                "negative_prompt": "blurry, low quality, artificial",
+                "steps": 30,
+                "cfg": 4.0
+            },
+            {
+                "prompt": "A cute cat sitting on a windowsill, soft lighting",
+                "negative_prompt": "blurry, low quality, harsh lighting",
+                "steps": 30,
+                "cfg": 4.5
+            },
+            
+            # 抽象艺术类
+            {
+                "prompt": "Abstract geometric patterns, modern art style",
+                "negative_prompt": "realistic, photographic, blurry",
+                "steps": 30,
+                "cfg": 5.0
+            },
+            {
+                "prompt": "A dreamy underwater scene with jellyfish, ethereal lighting",
+                "negative_prompt": "dark, murky, blurry",
+                "steps": 30,
+                "cfg": 4.5
+            },
+            {
+                "prompt": "A steampunk mechanical contraption, industrial design",
+                "negative_prompt": "modern, digital, blurry",
+                "steps": 30,
+                "cfg": 5.0
             }
         ]
         
-        # 每个配置重复3次
+        # 每个配置重复2次（减少重复，增加多样性）
         test_configs = []
         for i, config in enumerate(base_configs):
-            for repeat in range(3):
+            for repeat in range(2):
                 test_config = config.copy()
                 test_config['test_id'] = f"{i+1}_{repeat+1}"
                 test_configs.append(test_config)

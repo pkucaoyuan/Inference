@@ -44,17 +44,38 @@ class InferenceBenchmark:
         print(f"使用设备: {self.device}")
         print(f"统一输出目录: {self.output_dir}")
         
-        # 测试配置 - 增加实验次数
+        # 测试配置 - 参考Hugging Face示例的多样化提示词
         self.base_test_prompts = [
+            # 风景类
             "A beautiful landscape with mountains and lakes, photorealistic",
-            "A futuristic city with flying cars, cyberpunk style",
-            "A cute anime character in a magical garden, detailed"
+            "A serene beach at sunset with palm trees, cinematic lighting",
+            "A snowy mountain peak with aurora borealis, dramatic sky",
+            
+            # 城市建筑类
+            "A futuristic city with flying cars, cyberpunk style, neon lights",
+            "A medieval castle on a hill, fantasy art style",
+            "Modern architecture glass building, minimalist design",
+            
+            # 人物角色类
+            "A cute anime character in a magical garden, detailed",
+            "Portrait of a wise old wizard, fantasy art",
+            "A professional businesswoman in a modern office",
+            
+            # 动物类
+            "A majestic lion in the African savanna, wildlife photography",
+            "A colorful parrot in a tropical rainforest, nature photography",
+            "A cute cat sitting on a windowsill, soft lighting",
+            
+            # 抽象艺术类
+            "Abstract geometric patterns, modern art style",
+            "A dreamy underwater scene with jellyfish, ethereal lighting",
+            "A steampunk mechanical contraption, industrial design"
         ]
         
-        # 每个提示词重复3次
+        # 每个提示词重复2次（减少重复，增加多样性）
         self.test_prompts = []
         for i, prompt in enumerate(self.base_test_prompts):
-            for repeat in range(3):
+            for repeat in range(2):
                 self.test_prompts.append({
                     'prompt': prompt,
                     'test_id': f"{i+1}_{repeat+1}"
